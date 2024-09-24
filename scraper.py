@@ -11,6 +11,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
+from unidecode import unidecode
 import time
 import os
 from bs4 import BeautifulSoup
@@ -144,14 +145,28 @@ data_hoje = datetime.today()
 data_ontem = data_hoje - timedelta(days=1)
 data_filtro = data_ontem.strftime('%Y-%m-%d')
 
-df = df_final[df_final['date_flight']==data_filtro]
+voos = df_final[df_final['date_flight']==data_filtro]
 
-data_hoje = datetime.today()
-data_ontem = data_hoje - timedelta(days=1)
-data_filtro = data_ontem.strftime('%Y-%m-%d')
+url = "https://simplemaps.com/static/data/world-cities/basic/simplemaps_worldcities_basicv1.75.zip"
 
-df = df_final[df_final['date_flight']==data_filtro]
+response = requests.get(url)
+zip_file = zipfile.ZipFile(BytesIO(response.content))
 
+with zip_file.open('worldcities.csv') as file:
+    df = pd.read_csv(file)
+
+df['city_normalized'] = df['city'].apply(lambda x: unidecode(str(x)))
+
+
+def obter_informacoes_geograficas(cidade):
+    resultado = df[df['city_normalized'].str.lower() == cidade.lower()][['city','admin_name', 'country']].values
+    if len(resultado) > 0:
+        cidade, estado, pais = resultado[0]
+        return cidade, estado, pais
+    else:
+        return None, None, None
+
+voos[['Cidade_Correta' ,'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
 
 connect_str = os.environ['CONNECT_STR']
 container_name = os.environ['CONTAINER_NAME']
@@ -159,7 +174,7 @@ blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 container_client = blob_service_client.get_container_client(container_name)
 
 parquet_buffer = BytesIO()
-df.to_parquet(parquet_buffer, index=False)
+voos.to_parquet(parquet_buffer, index=False)
 
 parquet_data = parquet_buffer.getvalue()
 
