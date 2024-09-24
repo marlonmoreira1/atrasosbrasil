@@ -158,13 +158,16 @@ container_name = os.environ['CONTAINER_NAME']
 blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 container_client = blob_service_client.get_container_client(container_name)
 
-csv_buffer = StringIO()
-df.to_csv(csv_buffer, index=False)
-csv_data = csv_buffer.getvalue()
+parquet_buffer = BytesIO()
+df.to_parquet(parquet_buffer, index=False)
 
-blob_name = f"voos_{data_filtro}.csv"
+parquet_data = parquet_buffer.getvalue()
+
+
+blob_name = f"voos_{data_filtro}.parquet"
+
 blob_client = container_client.get_blob_client(blob_name)
-blob_client.upload_blob(csv_data, overwrite=True)
+blob_client.upload_blob(parquet_data, overwrite=True)
 
     
 
