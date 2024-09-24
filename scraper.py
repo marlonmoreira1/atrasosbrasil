@@ -18,6 +18,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from io import StringIO
 
 options = Options()
 options.add_argument('--headless')  
@@ -157,10 +158,11 @@ container_name = os.environ['CONTAINER_NAME']
 blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 container_client = blob_service_client.get_container_client(container_name)
 
-blob_name = f"voos_{data_filtro}.csv"
-      
-csv_data = df.to_csv(blob_name, index=False)
+csv_buffer = StringIO()
+df.to_csv(csv_buffer, index=False)
+csv_data = csv_buffer.getvalue()
 
+blob_name = f"voos_{data_filtro}.csv"
 blob_client = container_client.get_blob_client(blob_name)
 blob_client.upload_blob(csv_data, overwrite=True)
 
