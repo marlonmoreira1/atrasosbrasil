@@ -18,7 +18,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from io import StringIO
+from io import BytesIO
 
 options = Options()
 options.add_argument('--headless')  
