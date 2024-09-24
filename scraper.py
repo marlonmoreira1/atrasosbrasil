@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import requests
 import time
+import os
 from bs4 import BeautifulSoup
 import pandas as pd
 from datetime import datetime, timedelta
