@@ -116,16 +116,14 @@ def collect_data_from_airports(airports: Dict[str, str], collect_function: Calla
     all_data = []
     
     for airport, nome in airports.items():
-        print(f"Coletando dados para o aeroporto: {airport} - {nome}")
+        print(f"Coletando dados para o aeroporto: {airport} - {nome}")        
         
-        # Coleta dados de chegadas
         arrivals_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals")
         arrivals_df['Tipo'] = 'Chegada'
         arrivals_df['Aeroporto'] = nome
         all_data.append(arrivals_df)
-        time.sleep(delay)  # Espera entre as chamadas para evitar sobrecarga do servidor
+        time.sleep(delay)        
         
-        # Coleta dados de partidas
         departures_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures")
         departures_df['Tipo'] = 'Partida'
         departures_df['Aeroporto'] = nome
@@ -133,9 +131,8 @@ def collect_data_from_airports(airports: Dict[str, str], collect_function: Calla
         time.sleep(delay)
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
-        print("---")
-    
-    # Combina todos os dataframes em um único
+        print("---")    
+   
     final_df = pd.concat(all_data, ignore_index=True)
     
     return final_df
@@ -148,25 +145,22 @@ data_filtro = data_ontem.strftime('%Y-%m-%d')
 
 df = df_final[df_final['date_flight']==data_filtro]
 
-
-# Carrega os dados no Blob Storage
 data_hoje = datetime.today()
 data_ontem = data_hoje - timedelta(days=1)
 data_filtro = data_ontem.strftime('%Y-%m-%d')
 
 df = df_final[df_final['date_flight']==data_filtro]
 
-# Configuração do Blob Storage
+
 connect_str = os.environ['CONNECT_STR']
 container_name = os.environ['CONTAINER_NAME']
 blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 container_client = blob_service_client.get_container_client(container_name)
 
-# Converte o DataFrame para um arquivo CSV na memória        
-csv_data = df.to_csv(csv_buffer, index=False)        
-
-# Carrega o arquivo CSV no Blob Storage
 blob_name = f"voos_{data_filtro}.csv"
+      
+csv_data = df.to_csv(blob_name, index=False)
+
 blob_client = container_client.get_blob_client(blob_name)
 blob_client.upload_blob(csv_data, overwrite=True)
 
