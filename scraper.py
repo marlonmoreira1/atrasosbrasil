@@ -1,0 +1,173 @@
+import azure.functions as func
+import logging
+from azure.storage.blob import BlobServiceClient
+from webdriver_manager.chrome import ChromeDriverManager
+import pandas as pd
+from typing import Dict, Callable
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import requests
+import time
+from bs4 import BeautifulSoup
+import pandas as pd
+from datetime import datetime, timedelta
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument('--headless')  
+options.add_argument('--no-sandbox')
+options.add_argument('--disable-dev-shm-usage')
+
+driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+def fechar_overlay():
+    try:        
+        overlay = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
+        )
+        fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
+        fechar_botao.click()
+    except Exception as e:
+        print("Overlay não encontrado ou erro ao fechá-lo:", e)
+
+
+def obter_voos(url):
+    import time
+    url = url
+    driver.get(url)
+
+    fechar_overlay()
+
+    while True:
+        try:
+            load_more_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
+                    
+            load_more_button.click()
+            time.sleep(5)
+        except:
+            break
+            
+    time.sleep(5)
+    element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
+        )
+    html_content = element.get_attribute('outerHTML')
+    
+    soup = BeautifulSoup(html_content, 'html.parser')
+    
+    table = soup.find('table', class_='table table-condensed table-hover data-table m-n-t-15')
+    flights = []
+    
+    if table:
+        rows = table.find('tbody').find_all('tr')
+        
+        for row in rows:
+            columns = row.find_all('td')
+            if len(columns) > 1:
+
+                time = columns[0].get_text(strip=True)
+                flight = columns[1].get_text(strip=True)
+                origin = columns[2].get_text(strip=True)
+                airline = columns[3].get_text(strip=True)
+                aircraft = columns[4].get_text(strip=True)
+                status = columns[6].get_text(strip=True)
+                status_div = row.find('div', class_='state-block')
+                status_color = status_div.get('class')[1] if status_div else 'unknown'
+                data_date = row.get('data-date')
+                first_date_obj = datetime.strptime(data_date, '%A, %b %d').replace(year=datetime.now().year)
+                first_date_str = first_date_obj.strftime('%Y-%m-%d')
+                
+                flights.append({
+                    'Time': time,
+                    'Flight': flight,
+                    'From': origin,
+                    'Airline': airline,
+                    'Aircraft': aircraft,
+                    'Status': status,
+                    'Delay_status': status_color,
+                    'date_flight': first_date_str
+                })
+    voos = pd.DataFrame(flights)
+
+    return voos
+
+teste = {    
+    'SDU': 'Rio de Janeiro - Aeroporto Santos Dumont'
+}
+
+
+def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 5):
+    """
+    Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
+    e retorna um dataframe combinado com todos os dados.
+    
+    :param airports: Dicionário de códigos IATA dos aeroportos e seus nomes
+    :param collect_function: Função que coleta dados para um aeroporto específico e retorna um DataFrame
+    :param delay: Tempo de espera entre as chamadas (em segundos)
+    :return: DataFrame combinado com dados de todos os aeroportos
+    """
+    all_data = []
+    
+    for airport, nome in airports.items():
+        print(f"Coletando dados para o aeroporto: {airport} - {nome}")
+        
+        # Coleta dados de chegadas
+        arrivals_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals")
+        arrivals_df['Tipo'] = 'Chegada'
+        arrivals_df['Aeroporto'] = nome
+        all_data.append(arrivals_df)
+        time.sleep(delay)  # Espera entre as chamadas para evitar sobrecarga do servidor
+        
+        # Coleta dados de partidas
+        departures_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures")
+        departures_df['Tipo'] = 'Partida'
+        departures_df['Aeroporto'] = nome
+        all_data.append(departures_df)
+        time.sleep(delay)
+        
+        print(f"Dados coletados para o aeroporto: {airport} - {nome}")
+        print("---")
+    
+    # Combina todos os dataframes em um único
+    final_df = pd.concat(all_data, ignore_index=True)
+    
+    return final_df
+
+df_final = collect_data_from_airports(teste, obter_voos)
+
+data_hoje = datetime.today()
+data_ontem = data_hoje - timedelta(days=1)
+data_filtro = data_ontem.strftime('%Y-%m-%d')
+
+df = df_final[df_final['date_flight']==data_filtro]
+
+
+# Carrega os dados no Blob Storage
+data_hoje = datetime.today()
+data_ontem = data_hoje - timedelta(days=1)
+data_filtro = data_ontem.strftime('%Y-%m-%d')
+
+df = df_final[df_final['date_flight']==data_filtro]
+
+# Configuração do Blob Storage
+connect_str = os.environ['CONNECT_STR']
+container_name = os.environ['CONTAINER_NAME']
+blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+container_client = blob_service_client.get_container_client(container_name)
+
+# Converte o DataFrame para um arquivo CSV na memória        
+csv_data = df.to_csv(csv_buffer, index=False)        
+
+# Carrega o arquivo CSV no Blob Storage
+blob_name = f"voos_{data_filtro}.csv"
+blob_client = container_client.get_blob_client(blob_name)
+blob_client.upload_blob(csv_data, overwrite=True)
+
+    
+

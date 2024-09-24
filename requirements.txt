@@ -1,0 +1,11 @@
+azure-functions
+requests
+beautifulsoup4
+pandas
+datetime
+selenium
+webdriver_manager 
+pyodbc
+unidecode
+uuid
+azure-storage-blob
