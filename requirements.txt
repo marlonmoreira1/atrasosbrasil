@@ -9,3 +9,5 @@ pyodbc
 unidecode
 uuid
 azure-storage-blob
+pyarrow
+fastparquet
