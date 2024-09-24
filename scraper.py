@@ -101,8 +101,50 @@ def obter_voos(url):
     return voos
 
 
-teste = {
+brazil_airports = {
+    'SSA': 'Salvador - Aeroporto Internacional de Salvador',
+    'GRU': 'São Paulo - Aeroporto Internacional de Guarulhos',
+    'CGH': 'São Paulo - Aeroporto de Congonhas',
+    'BSB': 'Brasília - Aeroporto Internacional de Brasília',
+    'RIO': 'Rio de Janeiro - Aeroporto Internacional de Santos Dumont',
+    'GIG': 'Rio de Janeiro - Aeroporto Internacional do Galeão',
+    'FOR': 'Fortaleza - Aeroporto Internacional Pinto Martins',
+    'REC': 'Recife - Aeroporto Internacional dos Guararapes',
+    'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',
+    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',
+    'BEL': 'Belém - Aeroporto Internacional de Belém',
+    'MAN': 'Manaus - Aeroporto Internacional Eduardo Gomes',
+    'VIX': 'Vitória - Aeroporto de Vitória',
+    'FLN': 'Florianópolis - Aeroporto Internacional Hercílio Luz',
+    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',
+    'NAT': 'Natal - Aeroporto Internacional Aluízio Alves',
+    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',
+    'CGR': 'Campo Grande - Aeroporto Internacional de Campo Grande',
+    'SLZ': 'São Luís - Aeroporto Internacional de São Luís',
+    'CGB': 'Cuiabá - Aeroporto Internacional Marechal Rondon',
+    'THE': 'Teresina - Aeroporto de Teresina',
+    'AJU': 'Aracaju - Aeroporto de Aracaju',
+    'PVH': 'Porto Velho - Aeroporto Internacional de Porto Velho',
+    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',
+    'BOA': 'Boa Vista - Aeroporto Internacional de Boa Vista',
+    'RBR': 'Rio Branco - Aeroporto Internacional de Rio Branco',
+    'PMW': 'Palmas - Aeroporto de Palmas',
+    'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
+    
+    # Outros aeroportos relevantes
+    'CNF': 'Belo Horizonte - Aeroporto Internacional de Confins',
+    'SDU': 'Rio de Janeiro - Aeroporto Santos Dumont',
+    'VCP': 'Campinas - Aeroporto Internacional de Viracopos',
+    'BPS': 'Porto Seguro - Aeroporto de Porto Seguro',
+    'NVT': 'Navegantes - Aeroporto Internacional de Navegantes',
+    'IGU': 'Foz do Iguaçu - Aeroporto Internacional de Foz do Iguaçu',
+    'CXJ': 'Caxias do Sul - Aeroporto Regional Hugo Cantergiani',
+    'LDB': 'Londrina - Aeroporto de Londrina',
+    'JOI': 'Joinville - Aeroporto de Joinville',
     'UDI': 'Uberlândia - Aeroporto de Uberlândia',
+    'PLU': 'Belo Horizonte - Aeroporto da Pampulha',
+    'RAO': 'Ribeirão Preto - Aeroporto Leite Lopes',
+    'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
 def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 5):
@@ -139,7 +181,7 @@ def collect_data_from_airports(airports: Dict[str, str], collect_function: Calla
     
     return final_df
 
-df_final = collect_data_from_airports(teste, obter_voos)
+df_final = collect_data_from_airports(brazil_airports, obter_voos)
 
 data_hoje = datetime.today()
 data_ontem = data_hoje - timedelta(days=1)
