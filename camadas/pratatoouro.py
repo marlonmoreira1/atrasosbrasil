@@ -14,7 +14,7 @@ ouro_container = os.environ['CONTAINER_OURO']
 prata_container = os.environ['CONTAINER_PRATA']
 
 
-voos = read(prata_container)
+voos = read(connect_str,prata_container)
 
 voos_partida['direcao'] = 'embarque'
 voos_chegada['direcao'] = 'desembarque'
@@ -154,4 +154,4 @@ colunas_traduzidas = {
 voos = voos.rename(columns=colunas_traduzidas)
 
 
-save(voos,ouro_container)
+save(voos,connect_str,ouro_container)
