@@ -89,6 +89,12 @@ def am_pm_realizado(row):
     return row['AM-PM_Realizado']
 
 
+
+connect_str = os.environ['CONNECT_STR']
+bronze_container = os.environ['CONTAINER_NAME']
+prata_container = os.environ['CONTAINER_PRATA']
+
+
 def read_from_bronze():
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.get_container_client(bronze_container)
