@@ -1,0 +1,33 @@
+
+name: Daily Flight Collection
+
+on:
+  schedule:
+    - cron: '0 4 * * *' 
+  workflow_dispatch:
+
+jobs:
+  collect-and-load-data:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+     
+    - name: Run data collection and loading script
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }} 
+      run: |
+        python pratatobronze.py
