@@ -106,14 +106,14 @@ brazil_airports = {
     'GRU': 'São Paulo - Aeroporto Internacional de Guarulhos',
     'CGH': 'São Paulo - Aeroporto de Congonhas',
     'BSB': 'Brasília - Aeroporto Internacional de Brasília',
-    'RIO': 'Rio de Janeiro - Aeroporto Internacional de Santos Dumont',
+    'SDU': 'Rio de Janeiro - Aeroporto Internacional de Santos Dumont',
     'GIG': 'Rio de Janeiro - Aeroporto Internacional do Galeão',
+    'CNF': 'Belo Horizonte - Aeroporto Internacional de Confins',
     'FOR': 'Fortaleza - Aeroporto Internacional Pinto Martins',
     'REC': 'Recife - Aeroporto Internacional dos Guararapes',
-    'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',
-    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',
+    'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',    
     'BEL': 'Belém - Aeroporto Internacional de Belém',
-    'MAN': 'Manaus - Aeroporto Internacional Eduardo Gomes',
+    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',
     'VIX': 'Vitória - Aeroporto de Vitória',
     'FLN': 'Florianópolis - Aeroporto Internacional Hercílio Luz',
     'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',
@@ -124,16 +124,13 @@ brazil_airports = {
     'CGB': 'Cuiabá - Aeroporto Internacional Marechal Rondon',
     'THE': 'Teresina - Aeroporto de Teresina',
     'AJU': 'Aracaju - Aeroporto de Aracaju',
-    'PVH': 'Porto Velho - Aeroporto Internacional de Porto Velho',
-    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',
-    'BOA': 'Boa Vista - Aeroporto Internacional de Boa Vista',
+    'PVH': 'Porto Velho - Aeroporto Internacional de Porto Velho',    
+    'BVB': 'Boa Vista - Aeroporto Internacional de Boa Vista',
     'RBR': 'Rio Branco - Aeroporto Internacional de Rio Branco',
     'PMW': 'Palmas - Aeroporto de Palmas',
     'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
     
-    # Outros aeroportos relevantes
-    'CNF': 'Belo Horizonte - Aeroporto Internacional de Confins',
-    'SDU': 'Rio de Janeiro - Aeroporto Santos Dumont',
+    # Outros aeroportos relevantes    
     'VCP': 'Campinas - Aeroporto Internacional de Viracopos',
     'BPS': 'Porto Seguro - Aeroporto de Porto Seguro',
     'NVT': 'Navegantes - Aeroporto Internacional de Navegantes',
@@ -141,13 +138,12 @@ brazil_airports = {
     'CXJ': 'Caxias do Sul - Aeroporto Regional Hugo Cantergiani',
     'LDB': 'Londrina - Aeroporto de Londrina',
     'JOI': 'Joinville - Aeroporto de Joinville',
-    'UDI': 'Uberlândia - Aeroporto de Uberlândia',
-    'PLU': 'Belo Horizonte - Aeroporto da Pampulha',
+    'UDI': 'Uberlândia - Aeroporto de Uberlândia',    
     'RAO': 'Ribeirão Preto - Aeroporto Leite Lopes',
     'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
-def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 5):
+def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 25):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
