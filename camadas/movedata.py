@@ -6,7 +6,7 @@ from io import BytesIO
 
 
 
-def read(container):
+def read(connect_str,container):
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.get_container_client(container)
 
@@ -24,7 +24,7 @@ def read(container):
     return df
 
 
-def save(df,container):
+def save(df,connect_str,container):
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.get_container_client(container)
     
