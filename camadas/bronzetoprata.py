@@ -95,7 +95,7 @@ bronze_container = os.environ['CONTAINER_NAME']
 prata_container = os.environ['CONTAINER_PRATA']
 
 
-voos = read(bronze_container)
+voos = read(connect_str,bronze_container)
 
 
 voos[['Status', 'Hora_realizada', 'AM-PM_Realizado']] = voos['Status'].str.extract(r'([a-zA-Z\s\.]+)(\d{1,2}:\d{2})?\s?(AM|PM)?')
@@ -126,5 +126,5 @@ def obter_informacoes_geograficas(cidade):
 voos[['Cidade_Correta', 'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
 
 
-save(voos,prata_container)
+save(voos,connect_str,prata_container)
 
