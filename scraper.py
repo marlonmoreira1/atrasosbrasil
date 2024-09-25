@@ -143,7 +143,7 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
-def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 25):
+def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 5):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
