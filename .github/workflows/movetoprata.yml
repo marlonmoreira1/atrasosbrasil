@@ -30,4 +30,4 @@ jobs:
         CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
         CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }} 
       run: |
-        python pratatobronze.py
+        python bronzetoprata.py
