@@ -185,27 +185,6 @@ data_filtro = data_ontem.strftime('%Y-%m-%d')
 
 voos = df_final[df_final['date_flight']==data_filtro]
 
-url = "https://simplemaps.com/static/data/world-cities/basic/simplemaps_worldcities_basicv1.75.zip"
-
-response = requests.get(url)
-zip_file = zipfile.ZipFile(BytesIO(response.content))
-
-with zip_file.open('worldcities.csv') as file:
-    df = pd.read_csv(file)
-
-df['city_normalized'] = df['city'].apply(lambda x: unidecode(str(x)))
-
-
-def obter_informacoes_geograficas(cidade):
-    resultado = df[df['city_normalized'].str.lower() == cidade.lower()][['city','admin_name', 'country']].values
-    if len(resultado) > 0:
-        cidade, estado, pais = resultado[0]
-        return cidade, estado, pais
-    else:
-        return None, None, None
-
-voos[['Cidade_Correta' ,'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
-
 connect_str = os.environ['CONNECT_STR']
 container_name = os.environ['CONTAINER_NAME']
 blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -217,7 +196,7 @@ voos.to_parquet(parquet_buffer, index=False)
 parquet_data = parquet_buffer.getvalue()
 
 
-blob_name = f"voos_{data_filtro}.parquet"
+blob_name = f"voos_{data_filtro}_bronze.parquet"
 
 blob_client = container_client.get_blob_client(blob_name)
 blob_client.upload_blob(parquet_data, overwrite=True)
