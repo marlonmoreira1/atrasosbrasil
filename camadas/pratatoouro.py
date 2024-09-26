@@ -150,4 +150,4 @@ colunas_traduzidas = {
 voos = voos.rename(columns=colunas_traduzidas)
 
 
-save(voos,connect_str,ouro_container,"ouro")
+save(voos,connect_str,ouro_container,"oro")
