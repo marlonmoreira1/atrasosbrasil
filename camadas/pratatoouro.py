@@ -34,7 +34,7 @@ voos['Is_National'] = voos['País'].apply(obter_nacionalidade)
 def is_null(row):
     if pd.isna(row['Time']) or pd.isna(row['Hora_realizada']): 
         return row['Hora_realizada']
-    return None
+    return "NaoNulo"
 
 
 def convert_to_24h(time_str, am_pm,status,tipo):
@@ -55,7 +55,7 @@ def obter_atraso_flag(row):
     
     result = is_null(row)
 
-    if result is not None:
+    if result != "NaoNulo":
         return result
     
     hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
@@ -89,7 +89,7 @@ def obter_atraso_tempo(row):
     
     result = is_null(row)
 
-    if result is not None:
+    if result != "NaoNulo":
         return result
     
     hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
