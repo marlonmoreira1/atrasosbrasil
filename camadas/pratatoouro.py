@@ -131,7 +131,7 @@ colunas_traduzidas = {
     'Airline': 'Companhia_Aerea',
     'Aircraft': 'Modelo_Aeronave',
     'Status': 'Status_Voo',
-    'Delay_status': 'Indicador_Atraso',
+    'Delay_status': 'Indicador_Atraso_Cor',
     'date_flight': 'Data_Voo',
     'direcao': 'Direcao_Voo',
     'Aeroporto': 'Nome_Aeroporto',
