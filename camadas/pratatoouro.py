@@ -123,7 +123,7 @@ def obter_status_real(row):
 
 
 voos['Voo_Status_Real'] = voos.apply(obter_status_real,axis=1)
-voos['Voo_Id'] = voos['Flight'] + voos['Data_Voo'] + voos['Aeroporto'] + voos['Aircraft'] + voos['Aircraft_type']
+voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft'] + voos['Aircraft_type']
 
 colunas_traduzidas = {
     'Time': 'Hora_Prevista',
