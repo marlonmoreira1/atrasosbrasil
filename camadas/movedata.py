@@ -14,7 +14,9 @@ def read(connect_str,container,nome):
     data_ontem = data_hoje - timedelta(days=1)
     data_filtro = data_ontem.strftime('%Y-%m-%d')
 
-    blob_client = container_client.get_blob_client(nome)
+    blob_name = f"voos_{data_filtro}_.parquet" + nome
+
+    blob_client = container_client.get_blob_client(blob_name)
     stream = blob_client.download_blob()
     data = stream.readall()
 
@@ -36,6 +38,6 @@ def save(df,connect_str,container,nome):
     data_ontem = data_hoje - timedelta(days=1)
     data_filtro = data_ontem.strftime('%Y-%m-%d')
 
-    blob_name = nome
+    blob_name = f"voos_{data_filtro}_.parquet" + nome
     blob_client = container_client.get_blob_client(blob_name)
     blob_client.upload_blob(parquet_data, overwrite=True)
