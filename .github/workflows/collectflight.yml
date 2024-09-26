@@ -26,6 +26,15 @@ jobs:
     
     
 
+    - name: Run bronze to silver processing script
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+      run: |
+        python camadas/bronzetoprata.py
+
+
     - name: Run silver to gold processing script
       env:
         CONNECT_STR: ${{ secrets.CONNECT_STR }}
