@@ -32,8 +32,8 @@ voos['Is_National'] = voos['País'].apply(obter_nacionalidade)
 
 
 def is_null(row):
-    if pd.isna(row['Hora_Prevista']) or pd.isna(row['Hora_Realizada']): 
-        return row['Hora_Realizada']
+    if pd.isna(row['Time']) or pd.isna(row['Hora_realizada']): 
+        return row['Hora_realizada']
     return None
 
 
@@ -58,8 +58,8 @@ def obter_atraso_flag(row):
     if result is not None:
         return result
     
-    hora_prevista = convert_to_24h(row['Hora_Prevista'], row['AM-PM_Previsto'],row['Status'],'previsto')
-    hora_realizada = convert_to_24h(row['Hora_Realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
+    hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
+    hora_realizada = convert_to_24h(row['Hora_realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
 
     _,flag = obter_diff(hora_prevista,hora_realizada,row['AM-PM_Previsto'],row['AM-PM_Realizado'])
     return flag
@@ -92,8 +92,8 @@ def obter_atraso_tempo(row):
     if result is not None:
         return result
     
-    hora_prevista = convert_to_24h(row['Hora_Prevista'], row['AM-PM_Previsto'],row['Status'],'previsto')
-    hora_realizada = convert_to_24h(row['Hora_Realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
+    hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
+    hora_realizada = convert_to_24h(row['Hora_realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
     
     atraso,_ = obter_diff(hora_prevista,hora_realizada,row['AM-PM_Previsto'],row['AM-PM_Realizado'])
     
