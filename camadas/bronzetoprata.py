@@ -46,5 +46,5 @@ voos[['Cidade_Correta', 'Estado/Província', 'País']] = voos['From'].apply(lamb
 
 novo_voos = voos
 print(novo_voos)
-save(novo_voos,connect_str,prata_container,"prata")
+save(novo_voos,connect_str,prata_container,"plata")
 
