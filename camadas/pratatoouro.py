@@ -14,7 +14,7 @@ ouro_container = os.environ['CONTAINER_OURO']
 prata_container = os.environ['CONTAINER_PRATA']
 
 
-voos = read(connect_str,prata_container,"prata")
+voos = read(connect_str,prata_container,"plata")
 
 voos['Airline'] = voos['Airline'].str.replace(r'\s*\(.*?\)-', '', regex=True)
 voos['Airline'] = voos['Airline'].str.replace(r'\-$', '', regex=True)
