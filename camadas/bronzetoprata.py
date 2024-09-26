@@ -44,6 +44,7 @@ def obter_informacoes_geograficas(cidade):
 
 voos[['Cidade_Correta', 'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
 
-print(voos[['From', 'Aeroporto_iatacode']].head())
-save(voos,connect_str,prata_container,"prata")
+novo_voos = voos
+print(novo_voos)
+save(novo_voos,connect_str,prata_container,"prata")
 
