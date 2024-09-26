@@ -144,7 +144,7 @@ colunas_traduzidas = {
     'AM-PM_Previsto': 'Periodo_Previsto',
     'AM-PM_Realizado': 'Periodo_Realizado',    
     'Flag': 'Indicador_Atraso',
-    'Atraso\\Antecipado': 'Tempo_Atraso_Antecipacao',
+    'Atraso\Antecipado': 'Tempo_Atraso_Antecipacao',
     'Voo_Status_Real': 'Status_Real_Voo'
 }
 
