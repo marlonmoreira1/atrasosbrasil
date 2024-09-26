@@ -113,8 +113,9 @@ zip_file = zipfile.ZipFile(BytesIO(response.content))
 with zip_file.open('worldcities.csv') as file:
     df_cidades = pd.read_csv(file)
 
+print(df_cidades.head())
 df_cidades['city_normalized'] = df_cidades['city'].apply(lambda x: unidecode(str(x)))
-
+print(df_cidades['city_normalized'].head())
 def obter_informacoes_geograficas(cidade):
     resultado = df_cidades[df_cidades['city_normalized'].str.lower() == cidade.lower()][['city', 'admin_name', 'country']].values
     if len(resultado) > 0:
@@ -126,5 +127,5 @@ def obter_informacoes_geograficas(cidade):
 voos[['Cidade_Correta', 'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
 
 
-save(voos,connect_str,prata_container,"prata")
+#save(voos,connect_str,prata_container,"prata")
 
