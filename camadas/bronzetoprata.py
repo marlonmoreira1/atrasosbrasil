@@ -22,9 +22,6 @@ voos = read(connect_str,bronze_container,"bronze")
 
 voos[['From', 'Aeroporto_iatacode']] = voos['From'].str.extract(r'(.+)\((.+)\)-')
 
-voos[['Status', 'Hora_realizada', 'AM-PM_Realizado']] = voos['Status'].str.extract(r'([a-zA-Z\s\.]+)(\d{1,2}:\d{2})?\s?(AM|PM)?')
-voos[['Time', 'AM-PM_Previsto']] = voos['Time'].str.extract(r'(\d{1,2}:\d{2})\s?(AM|PM)')
-
 url = "https://simplemaps.com/static/data/world-cities/basic/simplemaps_worldcities_basicv1.75.zip"
 response = requests.get(url)
 zip_file = zipfile.ZipFile(BytesIO(response.content))
