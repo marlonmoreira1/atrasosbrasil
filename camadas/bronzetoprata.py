@@ -20,7 +20,7 @@ prata_container = os.environ['CONTAINER_PRATA']
 
 voos = read(connect_str,bronze_container,"bronze")
 
-voos[['From', 'Aeroporto_iatacode']] = voos['From'].str.extract(r'(.+)\((.+)\)-')
+voos[['Cidade', 'Aeroporto_iatacode']] = voos['From'].str.extract(r'(.+)\((.+)\)-')
 
 url = "https://simplemaps.com/static/data/world-cities/basic/simplemaps_worldcities_basicv1.75.zip"
 response = requests.get(url)
@@ -32,16 +32,16 @@ with zip_file.open('worldcities.csv') as file:
 df_cidades['city_normalized'] = df_cidades['city'].apply(lambda x: unidecode(str(x)))
 
 def obter_informacoes_geograficas(cidade):
-    resultado = df_cidades[df_cidades['city_normalized'].str.lower() == cidade.lower()][['city', 'admin_name', 'country']].values
+    resultado = df_cidades[df_cidades['city_normalized'].str.lower() == cidade.lower()][['city_normalized','city', 'admin_name', 'country']].values
     if len(resultado) > 0:
-        cidade, estado, pais = resultado[0]
-        return cidade, estado, pais
+        cidade_normalizada, cidade, estado, pais = resultado[0]
+        return cidade_normalizada, cidade, estado, pais
     else:
-        return None, None, None
+        return None, None, None,None
 
-voos[['Cidade_Correta', 'Estado/Província', 'País']] = voos['From'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
+voos[['city_normalized','city', 'admin_name', 'country']] = voos['Cidade'].apply(lambda x: pd.Series(obter_informacoes_geograficas(x)))
 
-novo_voos = voos
-print(novo_voos)
+voos = voos.drop(columns=['From'])
+
 save(novo_voos,connect_str,prata_container,"prata")
 
