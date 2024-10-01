@@ -29,7 +29,7 @@ def obter_nacionalidade(row):
         return 'Internacional'
     return 'Nacional'
 
-voos['Is_National'] = voos['País'].apply(obter_nacionalidade)
+voos['Is_National'] = voos['country'].apply(obter_nacionalidade)
 
 voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft']
 
