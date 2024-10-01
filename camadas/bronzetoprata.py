@@ -43,5 +43,5 @@ voos[['city_normalized','city', 'admin_name', 'country']] = voos['Cidade'].apply
 
 voos = voos.drop(columns=['From'])
 
-save(novo_voos,connect_str,prata_container,"prata")
+save(voos,connect_str,prata_container,"prata")
 
