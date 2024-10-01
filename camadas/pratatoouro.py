@@ -31,105 +31,11 @@ def obter_nacionalidade(row):
 
 voos['Is_National'] = voos['País'].apply(obter_nacionalidade)
 
-
-def is_null(row):
-    if pd.isna(row['Time']) or pd.isna(row['Hora_realizada']): 
-        return row['Hora_realizada']
-    return "NaoNulo"
-
-
-def convert_to_24h(time_str, am_pm,status,tipo):
-    if status == 'Known' and tipo == 'realizado':
-        time_obj = datetime.strptime(time_str, '%H:%M')
-        return time_obj
-        
-    time_obj = datetime.strptime(time_str, '%I:%M')
-    
-    if am_pm == 'PM' and time_obj.hour != 12:
-        time_obj += timedelta(hours=12)
-    elif am_pm == 'AM' and time_obj.hour == 12:
-        time_obj -= timedelta(hours=12)
-    return time_obj
-    
-
-def obter_atraso_flag(row):
-    
-    result = is_null(row)
-
-    if result != "NaoNulo":
-        return result
-    
-    hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
-    hora_realizada = convert_to_24h(row['Hora_realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
-
-    _,flag = obter_diff(hora_prevista,hora_realizada,row['AM-PM_Previsto'],row['AM-PM_Realizado'])
-    return flag
-    
-
-def obter_diff(hora_prevista,hora_realizada,am_pm_previsto,am_pm_realizado):
-    
-    if hora_prevista.hour == 0 and (am_pm_previsto == 'AM' and am_pm_realizado == 'PM'):
-        atraso = hora_prevista - hora_realizada
-        flag = 'ON-Time'
-    elif hora_prevista.hour == 12 and (am_pm_previsto == 'PM' and am_pm_realizado == 'AM'):
-        atraso = hora_prevista - hora_realizada
-        flag = 'ON-Time'
-    elif hora_prevista >= hora_realizada and (am_pm_previsto == am_pm_realizado):
-        atraso = hora_prevista - hora_realizada
-        flag = 'ON-Time'
-    else:
-        atraso = hora_realizada - hora_prevista
-        flag = 'Atrasado'
-    
-    if atraso < timedelta(0):
-        atraso += timedelta(days=1)
-    return atraso, flag
-
-
-def obter_atraso_tempo(row):
-    
-    result = is_null(row)
-
-    if result != "NaoNulo":
-        return result
-    
-    hora_prevista = convert_to_24h(row['Time'], row['AM-PM_Previsto'],row['Status'],'previsto')
-    hora_realizada = convert_to_24h(row['Hora_realizada'], row['AM-PM_Realizado'],row['Status'],'realizado')
-    
-    atraso,_ = obter_diff(hora_prevista,hora_realizada,row['AM-PM_Previsto'],row['AM-PM_Realizado'])
-    
-    horas = atraso.seconds // 3600
-    minutos = (atraso.seconds % 3600) // 60
-    return f"{horas:02}:{minutos:02}"
-            
-
-voos['Flag'] = voos.apply(obter_atraso_flag,axis=1)
-
-voos['Atraso\Antecipado'] = voos.apply(obter_atraso_tempo,axis=1)
-
-def obter_status_real(row):
-    if row['Status'] == 'Canceled':
-        return row['Status']
-    elif 'Diverted' in row['Status']:
-        return 'Diverted'
-        
-    elif (row['Delay_status'] == 'red' and not (row['Status'] == 'Canceled' or 'Diverted' in row['Status']))\
-    or (row['Delay_status'] == 'yellow' and pd.to_datetime(row['Atraso\Antecipado']) > pd.to_datetime('00:15'))\
-    or (row['Flag'] == 'Atrasado' and pd.to_datetime(row['Atraso\Antecipado']) > pd.to_datetime('00:15')):
-        return 'Delayed'
-        
-    elif row['Delay_status'] == 'gray'and not row['Status'] == 'Known':
-        return 'Unknown'
-    return 'ON-TIME'
-
-
-voos['Voo_Status_Real'] = voos.apply(obter_status_real,axis=1)
-voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft'] + voos['Aircraft_type']
+voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft']
 
 colunas_traduzidas = {
     'Time': 'Hora_Prevista',
-    'Flight': 'Numero_Voo',
-    'From': 'Cidade_Origem',
+    'Flight': 'Numero_Voo',    
     'Airline': 'Companhia_Aerea',
     'Aircraft': 'Modelo_Aeronave',
     'Status': 'Status_Voo',
@@ -139,15 +45,14 @@ colunas_traduzidas = {
     'Aeroporto': 'Nome_Aeroporto',
     'Aircraft_type': 'Tipo_Aeronave',
     'Hora_realizada': 'Hora_Realizada',
-    'Estado/Província': 'Estado_Provincia_Origem',
-    'País': 'Pais_Origem',
+    'admin_name': 'Estado',
+    'country': 'Pais',
     'Is_National': 'Tipo_Voo_Nacional',
-    'Cidade_Correta': 'Cidade_Origem_Normalizada',
+    'city_normalized': 'Cidade_Normalizada',
+    'city': 'Cidade_ascii',
     'AM-PM_Previsto': 'Periodo_Previsto',
-    'AM-PM_Realizado': 'Periodo_Realizado',    
-    'Flag': 'Indicador_Atraso',
-    'Atraso\Antecipado': 'Tempo_Atraso_Antecipacao',
-    'Voo_Status_Real': 'Status_Real_Voo'
+    'AM-PM_Realizado': 'Periodo_Realizado'   
+    
 }
 
 voos = voos.rename(columns=colunas_traduzidas)
