@@ -21,8 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
+        pip install -r requirements.txt        
         
     - name: Run data collection and loading script
       env:
@@ -30,3 +29,19 @@ jobs:
         CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}        
       run: |
         python scraper.py
+
+    - name: Run bronze to silver processing script
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+      run: |
+        python camadas/bronzetoprata.py
+
+    - name: Run silver to gold processing script
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+        CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
+      run: |
+        python camadas/pratatoouro.py
