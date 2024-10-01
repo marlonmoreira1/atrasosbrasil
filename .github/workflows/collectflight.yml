@@ -24,9 +24,10 @@ jobs:
         pip install -r requirements.txt
         
         
-    - name: Run data collection and loading script
+    - name: Run silver to gold processing script
       env:
         CONNECT_STR: ${{ secrets.CONNECT_STR }}
-        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}        
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+        CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
       run: |
-        python scraper.py
+        python camadas/pratatoouro.py
