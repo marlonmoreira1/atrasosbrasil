@@ -30,7 +30,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 10).until(
+        overlay = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
