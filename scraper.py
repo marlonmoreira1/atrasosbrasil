@@ -30,7 +30,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 30).until(
+        overlay = WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -52,11 +52,11 @@ def obter_voos(url):
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             load_more_button.click()
-            time.sleep(2)
+            
         except:
             break
             
-    time.sleep(2)
+    
     element = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
         )
@@ -143,7 +143,7 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
-def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame], delay: int = 2):
+def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame]):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
@@ -162,13 +162,13 @@ def collect_data_from_airports(airports: Dict[str, str], collect_function: Calla
         arrivals_df['Tipo'] = 'Chegada'
         arrivals_df['Aeroporto'] = nome
         all_data.append(arrivals_df)
-        time.sleep(delay)        
+               
         
         departures_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures")
         departures_df['Tipo'] = 'Partida'
         departures_df['Aeroporto'] = nome
         all_data.append(departures_df)
-        time.sleep(delay)
+        
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
         print("---")    
