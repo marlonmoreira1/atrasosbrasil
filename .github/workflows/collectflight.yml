@@ -23,12 +23,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt        
         
-    # - name: Run data collection and loading script
-    #   env:
-    #     CONNECT_STR: ${{ secrets.CONNECT_STR }}
-    #     CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}        
-    #   run: |
-    #     python scraper.py
+    - name: Run data collection and loading script
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}        
+      run: |
+        python scraper.py
 
     - name: Run bronze to silver processing script
       env:
