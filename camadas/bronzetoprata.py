@@ -32,7 +32,8 @@ with zip_file.open('worldcities.csv') as file:
 df_cidades['city_normalized'] = df_cidades['city'].apply(lambda x: unidecode(str(x)))
 
 def obter_informacoes_geograficas(cidade):
-    resultado = df_cidades[df_cidades['city_normalized'].str.lower() == cidade.lower()][['city_normalized','city', 'admin_name', 'country']].values
+    cidade_str = str(cidade).lower()
+    resultado = df_cidades[df_cidades['city_normalized'].str.lower() == cidade_str][['city_normalized','city', 'admin_name', 'country']].values
     if len(resultado) > 0:
         cidade_normalizada, cidade, estado, pais = resultado[0]
         return cidade_normalizada, cidade, estado, pais
