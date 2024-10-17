@@ -13,6 +13,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from azure.storage.blob import BlobServiceClient
 from unidecode import unidecode
 from movedata import save, read
+import warnings
+warnings.simplefilter(action='ignore')
 
 connect_str = os.environ['CONNECT_STR']
 bronze_container = os.environ['CONTAINER_NAME']
