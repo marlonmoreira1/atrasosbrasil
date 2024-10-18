@@ -30,9 +30,9 @@ def normalize_city_name(city_name):
     city_name = ' '.join(word.capitalize() for word in city_name.lower().split())
     return city_name
 
-airports = pd.read_csv("data/airports.csv",header=0,delimiter=',')
-countries = pd.read_csv("data/countries.csv",header=0,delimiter=',')
-states = pd.read_csv("data/regions.csv",header=0,delimiter=',')
+airports = pd.read_csv("camadas/data/airports.csv",header=0,delimiter=',')
+countries = pd.read_csv("camadas/data/countries.csv",header=0,delimiter=',')
+states = pd.read_csv("camadas/data/regions.csv",header=0,delimiter=',')
 
 states['region'] = states['name']
 countries['country'] = countries['name']
