@@ -54,7 +54,7 @@ O pipeline de coleta e transformação é gerenciado por GitHub Actions e Azure 
 
 ## Análise e Visualização dos Dados
 
-[App para o Monitor de Voos]([https://seu-link-para-o-dashboard.com](https://bit.ly/VoosMonitorBrasil))
+[App para o Monitor de Voos]((https://bit.ly/VoosMonitorBrasil))
 
 ### Estrutura do App no Power BI
 O aplicativo possui quatro páginas principais:
@@ -74,12 +74,6 @@ Página de pesquisa
 - % On-Time
 - Tempo de Espera
 
-## Resultados e Conclusões
-
-### Principais Insights
-- Concentração de atrasos no embarque e em voos internacionais.
-- Piores dias para voos: quintas e sextas-feiras.
-- Horários críticos para atrasos: entre 15h e 19h.
 
 ## Próximos Passos e Melhorias
 Futuras iterações do projeto podem incluir a integração de dados de preços de passagens aéreas, enriquecendo a experiência do usuário e tornando o aplicativo uma ferramenta ainda mais valiosa.
