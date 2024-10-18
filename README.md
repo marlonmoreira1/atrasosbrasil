@@ -54,7 +54,7 @@ O pipeline de coleta e transformação é gerenciado por GitHub Actions e Azure 
 
 ## Análise e Visualização dos Dados
 
-[App para o Monitor de Voos]((https://bit.ly/VoosMonitorBrasil))
+[App para o Monitor de Voos](https://bit.ly/VoosMonitorBrasil)
 
 ### Estrutura do App no Power BI
 O aplicativo possui quatro páginas principais:
