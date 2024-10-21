@@ -129,6 +129,8 @@ brazil_airports = {
     'RBR': 'Rio Branco - Aeroporto Internacional de Rio Branco',
     'PMW': 'Palmas - Aeroporto de Palmas',
     'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
+    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',
+    'MCP': 'Aeroporto Internacional de Macapá - Alberto Alcolumbre',
     
     # Outros aeroportos relevantes    
     'VCP': 'Campinas - Aeroporto Internacional de Viracopos',
