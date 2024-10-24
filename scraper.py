@@ -57,9 +57,24 @@ def obter_voos(url):
             break
             
     time.sleep(1)
-    element = WebDriverWait(driver, 40).until(
-            EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
-        )
+    
+    max_attempts = 5
+    attempts = 0
+    element = None
+
+    while attempts < max_attempts:
+        try:
+            element = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
+            )
+            break  
+        except TimeoutException:
+            attempts += 1
+            print(f"Tentativa {attempts} falhou, tentando novamente...")
+
+    if element is None:
+        raise TimeoutException("O elemento não foi encontrado após 5 tentativas.")
+
     html_content = element.get_attribute('outerHTML')
     
     soup = BeautifulSoup(html_content, 'html.parser')
