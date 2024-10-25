@@ -1,10 +1,7 @@
 import os
 import time
-import zipfile
-import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from io import BytesIO
 from azure.storage.blob import BlobServiceClient
 from unidecode import unidecode
 from movedata import save, read
