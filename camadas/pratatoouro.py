@@ -31,7 +31,7 @@ def obter_nacionalidade(row):
 
 voos['Tipo_Voo_Nacional'] = voos['country'].apply(obter_nacionalidade)
 
-voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft']
+voos['Voo_Id'] = voos['Flight'] + voos['date_flight'] + voos['Aeroporto'] + voos['Aircraft'] + voos['city_normalized'] + voos['Status']
 
 voos = voos.drop(columns=['Time','Airline','Aircraft'])
 
