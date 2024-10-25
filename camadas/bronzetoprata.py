@@ -1,15 +1,7 @@
 import os
 import time
-import zipfile
-import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from io import BytesIO
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from bs4 import BeautifulSoup
-from webdriver_manager.chrome import ChromeDriverManager
 from azure.storage.blob import BlobServiceClient
 from unidecode import unidecode
 from movedata import save, read
