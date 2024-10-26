@@ -15,6 +15,7 @@ from unidecode import unidecode
 import time
 import os
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import TimeoutException
 import pandas as pd
 from datetime import datetime, timedelta
 from selenium import webdriver
