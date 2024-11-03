@@ -31,7 +31,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 10).until(
+        overlay = WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -49,7 +49,7 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 15).until(
+            load_more_button = WebDriverWait(driver, 25).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             load_more_button.click()
