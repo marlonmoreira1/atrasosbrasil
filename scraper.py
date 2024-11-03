@@ -72,9 +72,10 @@ def obter_voos(url):
         except TimeoutException:
             attempts += 1
             print(f"Tentativa {attempts} falhou, tentando novamente...")
+            time.sleep(5)
 
     if element is None:
-        raise TimeoutException("O elemento não foi encontrado após 5 tentativas.")
+        raise TimeoutException("O elemento não foi encontrado após 6 tentativas.")
 
     html_content = element.get_attribute('outerHTML')
     
