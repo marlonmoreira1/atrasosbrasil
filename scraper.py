@@ -49,15 +49,15 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 10).until(
+            load_more_button = WebDriverWait(driver, 20).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             load_more_button.click()
-            time.sleep(1)
+            time.sleep(3)
         except:
             break
             
-    time.sleep(1)
+    time.sleep(3)
     
     max_attempts = 6
     attempts = 0
@@ -162,7 +162,7 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
-def collect_data_from_airports(airports: Dict[str, str], collect_function: Callable[[str], pd.DataFrame]):
+def collect_data_from_airports(airports, collect_function):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
@@ -181,13 +181,13 @@ def collect_data_from_airports(airports: Dict[str, str], collect_function: Calla
         arrivals_df['Tipo'] = 'Chegada'
         arrivals_df['Aeroporto'] = nome
         all_data.append(arrivals_df)
-        time.sleep(1) 
+        time.sleep(5) 
         
         departures_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures")
         departures_df['Tipo'] = 'Partida'
         departures_df['Aeroporto'] = nome
         all_data.append(departures_df)
-        time.sleep(1)
+        time.sleep(5)
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
         print("---")    
