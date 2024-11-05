@@ -31,7 +31,7 @@ driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), opti
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 10).until(
+        overlay = WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -49,7 +49,7 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 20).until(
+            load_more_button = WebDriverWait(driver, 25).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             load_more_button.click()
@@ -58,24 +58,10 @@ def obter_voos(url):
             break
             
     time.sleep(3)
-    
-    max_attempts = 6
-    attempts = 0
-    element = None
-
-    while attempts < max_attempts:
-        try:
-            element = WebDriverWait(driver, 40).until(
-                EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
-            )
-            break  
-        except TimeoutException:
-            attempts += 1
-            print(f"Tentativa {attempts} falhou, tentando novamente...")
-            time.sleep(5)
-
-    if element is None:
-        raise TimeoutException("O elemento não foi encontrado após 6 tentativas.")
+  
+    element = WebDriverWait(driver, 45).until(
+        EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
+    )      
 
     html_content = element.get_attribute('outerHTML')
     
