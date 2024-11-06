@@ -45,7 +45,7 @@ def obter_voos(url):
     url = url
     driver.get(url)
 
-    fechar_overlay()
+    #fechar_overlay()
 
     while True:
         try:
