@@ -154,6 +154,21 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }
 
+def try_collect(url, tipo):
+            retries = 0
+            max_retries = 10
+            while retries < max_retries:
+                try:
+                    data_df = collect_function(url)
+                    data_df['Tipo'] = tipo
+                    data_df['Aeroporto'] = nome
+                    return data_df
+                except TimeoutException:
+                    retries += 1                    
+                    time.sleep(20)
+            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
+            
+
 def collect_data_from_airports(airports, collect_function):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
@@ -169,20 +184,16 @@ def collect_data_from_airports(airports, collect_function):
     for airport, nome in airports.items():
         print(f"Coletando dados para o aeroporto: {airport} - {nome}")        
         
-        arrivals_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals")
-        arrivals_df['Tipo'] = 'Chegada'
-        arrivals_df['Aeroporto'] = nome
-        all_data.append(arrivals_df)
-        time.sleep(1) 
-        
-        departures_df = collect_function(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures")
-        departures_df['Tipo'] = 'Partida'
-        departures_df['Aeroporto'] = nome
-        all_data.append(departures_df)
+        arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
         time.sleep(1)
+        departures_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures", 'Partida')
+
+        all_data.append(arrivals_df)
+        all_data.append(departures_df)
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
-        print("---")    
+        print("---")
+        time.sleep(1)
    
     final_df = pd.concat(all_data, ignore_index=True)
     
