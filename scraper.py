@@ -38,7 +38,7 @@ def fechar_overlay():
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
         fechar_botao.click()
     except Exception as e:
-        print("Overlay não encontrado ou erro ao fechá-lo:")
+        pass  # Ignorando o erro, pois o overlay pode não aparecer sempre
 
 
 def obter_voos(url):
@@ -54,8 +54,7 @@ def obter_voos(url):
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
-                load_more_button.click()
-                print("Botão 'Carregar mais' clicado com sucesso.")
+                load_more_button.click()                
                 time.sleep(1)  
             else:
                 print("Botão 'Carregar mais' não está clicável ou não está visível.")
