@@ -152,22 +152,7 @@ brazil_airports = {
     'UDI': 'Uberlândia - Aeroporto de Uberlândia',    
     'RAO': 'Ribeirão Preto - Aeroporto Leite Lopes',
     'MGF': 'Maringá - Aeroporto de Maringá'
-}
-
-def try_collect(url, tipo):
-            retries = 0
-            max_retries = 10
-            while retries < max_retries:
-                try:
-                    data_df = collect_function(url)
-                    data_df['Tipo'] = tipo
-                    data_df['Aeroporto'] = nome
-                    return data_df
-                except TimeoutException:
-                    retries += 1                    
-                    time.sleep(20)
-            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
-            
+}            
 
 def collect_data_from_airports(airports, collect_function):
     """
@@ -182,7 +167,21 @@ def collect_data_from_airports(airports, collect_function):
     all_data = []
     
     for airport, nome in airports.items():
-        print(f"Coletando dados para o aeroporto: {airport} - {nome}")        
+        print(f"Coletando dados para o aeroporto: {airport} - {nome}")
+
+        def try_collect(url, tipo):
+            retries = 0
+            max_retries = 10
+            while retries < max_retries:
+                try:
+                    data_df = collect_function(url)
+                    data_df['Tipo'] = tipo
+                    data_df['Aeroporto'] = nome
+                    return data_df
+                except TimeoutException:
+                    retries += 1                    
+                    time.sleep(20)
+            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
         time.sleep(1)
@@ -217,11 +216,7 @@ voos.to_parquet(parquet_buffer, index=False)
 
 parquet_data = parquet_buffer.getvalue()
 
-
 blob_name = f"voos_{data_filtro}_bronze.parquet"
 
 blob_client = container_client.get_blob_client(blob_name)
 blob_client.upload_blob(parquet_data, overwrite=True)
-
-    
-
