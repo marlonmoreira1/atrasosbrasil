@@ -32,7 +32,7 @@ driver.set_page_load_timeout(600)
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 20).until(
+        overlay = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -50,7 +50,7 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 25).until(
+            load_more_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
@@ -64,7 +64,7 @@ def obter_voos(url):
             
     time.sleep(1)
   
-    element = WebDriverWait(driver, 50).until(
+    element = WebDriverWait(driver, 20).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
 
@@ -170,7 +170,7 @@ def collect_data_from_airports(airports, collect_function):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 10
+            max_retries = 100
             while retries < max_retries:
                 try:
                     data_df = collect_function(url)
@@ -179,7 +179,7 @@ def collect_data_from_airports(airports, collect_function):
                     return data_df
                 except TimeoutException:
                     retries += 1                    
-                    time.sleep(20)
+                    time.sleep(1)
             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
