@@ -64,7 +64,7 @@ def obter_voos(url):
             
     time.sleep(1)
   
-    element = WebDriverWait(driver, 20).until(
+    element = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
 
@@ -170,7 +170,7 @@ def collect_data_from_airports(airports, collect_function):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 5
+            max_retries = 15
             while retries < max_retries:
                 try:
                     data_df = collect_function(url)
