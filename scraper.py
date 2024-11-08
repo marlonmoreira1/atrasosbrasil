@@ -170,7 +170,7 @@ def collect_data_from_airports(airports, collect_function):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 100
+            max_retries = 5
             while retries < max_retries:
                 try:
                     data_df = collect_function(url)
@@ -180,7 +180,7 @@ def collect_data_from_airports(airports, collect_function):
                 except TimeoutException:
                     retries += 1                    
                     time.sleep(1)
-            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
+                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {max_retries} tentativas.")
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
         time.sleep(1)
