@@ -170,7 +170,7 @@ def collect_data_from_airports(airports, collect_function):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 15
+            max_retries = 11
             while retries < max_retries:
                 try:
                     data_df = collect_function(url)
