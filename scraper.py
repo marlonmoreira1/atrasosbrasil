@@ -23,12 +23,13 @@ from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
 options = Options()
-options.add_argument('--headless')  
+#options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
+options.page_load_strategy = "normal"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(600)  
+driver.set_page_load_timeout(60)  
 
 def fechar_overlay():
     try:        
@@ -183,7 +184,7 @@ def collect_data_from_airports(airports, collect_function):
                     print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas.")
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
-        time.sleep(1)
+        time.sleep(5)
         departures_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures", 'Partida')
 
         all_data.append(arrivals_df)
@@ -191,7 +192,7 @@ def collect_data_from_airports(airports, collect_function):
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
         print("---")
-        time.sleep(1)
+        time.sleep(5)
    
     final_df = pd.concat(all_data, ignore_index=True)
     
