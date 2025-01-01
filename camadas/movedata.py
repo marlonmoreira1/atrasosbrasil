@@ -11,9 +11,10 @@ def read(connect_str,container,nome):
     container_client = blob_service_client.get_container_client(container)
 
     
-    data_hoje = datetime.today()
-    data_ontem = data_hoje - timedelta(days=1)
-    data_filtro = data_ontem.strftime('%Y-%m-%d')
+    # data_hoje = datetime.today()
+    # data_ontem = data_hoje - timedelta(days=1)
+    # data_filtro = data_ontem.strftime('%Y-%m-%d')
+    data_filtro = datetime(2025, 1, 1).strftime('%Y-%m-%d')
 
     blob_name = f"voos_{data_filtro}_{nome}.parquet"
 
