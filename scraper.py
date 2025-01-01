@@ -200,9 +200,10 @@ def collect_data_from_airports(airports, collect_function):
 
 df_final = collect_data_from_airports(brazil_airports, obter_voos)
 
-data_hoje = datetime.today()
-data_ontem = data_hoje - timedelta(days=1)
-data_filtro = data_ontem.strftime('%Y-%m-%d')
+# data_hoje = datetime.today()
+# data_ontem = data_hoje - timedelta(days=1)
+# data_filtro = data_ontem.strftime('%Y-%m-%d')
+data_filtro = datetime(2025, 1, 1).strftime('%Y-%m-%d')
 
 voos = df_final[df_final['date_flight']==data_filtro]
 
