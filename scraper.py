@@ -23,13 +23,13 @@ from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
 options = Options()
-#options.add_argument('--headless')  
+options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
 options.page_load_strategy = "normal"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(60)  
+driver.set_page_load_timeout(160)  
 
 def fechar_overlay():
     try:        
