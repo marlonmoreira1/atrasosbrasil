@@ -26,15 +26,14 @@ options = Options()
 #options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 options.page_load_strategy = "normal"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(1000)  
+driver.set_page_load_timeout(600)  
 
 def fechar_overlay():
     try:        
-        overlay = WebDriverWait(driver, 15).until(
+        overlay = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -52,7 +51,7 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 15).until(
+            load_more_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
@@ -66,7 +65,7 @@ def obter_voos(url):
             
     time.sleep(1)
   
-    element = WebDriverWait(driver, 20).until(
+    element = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
 
