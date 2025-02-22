@@ -178,7 +178,7 @@ def collect_data_from_airports(airports, collect_function):
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
                     return data_df
-                except (TimeoutException, socket.timeout) as e:
+                except (TimeoutException, socket.timeout, urllib3.exceptions.MaxRetryError) as e:
                     retries += 1                    
                     time.sleep(5)
                     print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
