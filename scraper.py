@@ -15,6 +15,7 @@ from unidecode import unidecode
 import time
 import os
 import socket
+import urllib3
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
