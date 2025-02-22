@@ -17,7 +17,7 @@ import os
 import socket
 import urllib3
 from bs4 import BeautifulSoup
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 import pandas as pd
 from datetime import datetime, timedelta
 from selenium import webdriver
@@ -179,7 +179,10 @@ def collect_data_from_airports(airports, collect_function):
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
                     return data_df
-                except (TimeoutException, socket.timeout, urllib3.exceptions.MaxRetryError) as e:
+                except (TimeoutException, socket.timeout, 
+                        urllib3.exceptions.MaxRetryError, urllib3.exceptions.NewConnectionError, 
+                        urllib3.exceptions.ReadTimeoutError, requests.exceptions.ConnectionError, 
+                        requests.exceptions.Timeout, WebDriverException) as e:
                     retries += 1                    
                     time.sleep(5)
                     print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
