@@ -14,6 +14,7 @@ import requests
 from unidecode import unidecode
 import time
 import os
+import socket
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import TimeoutException
 import pandas as pd
@@ -177,10 +178,18 @@ def collect_data_from_airports(airports, collect_function):
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
                     return data_df
-                except TimeoutException:
+                except (TimeoutException, socket.timeout) as e:
                     retries += 1                    
                     time.sleep(5)
-                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas.")
+                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
+                    
+                    if retries < max_retries:
+                        time.sleep(5)
+                        driver.refresh()  
+                    else:
+                        print(f"Máximo de tentativas atingido para {tipo} no aeroporto {airport}.")
+                        return None
+                        
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
         time.sleep(5)
