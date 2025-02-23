@@ -28,7 +28,7 @@ options = Options()
 options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.page_load_strategy = "eager"
+options.page_load_strategy = "none"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 driver.set_page_load_timeout(360)  
@@ -187,9 +187,8 @@ def collect_data_from_airports(airports, collect_function):
                     retries += 1                    
                     time.sleep(5)
                     print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")                   
-                    driver.quit()  
-                    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)  
-                    driver.set_page_load_timeout(360)
+                    driver.refresh()  
+                    
                         
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
