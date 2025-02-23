@@ -28,10 +28,10 @@ options = Options()
 options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.page_load_strategy = "none"
+
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(360)  
+driver.set_page_load_timeout(600)  
 
 def fechar_overlay():
     try:        
@@ -175,7 +175,7 @@ def collect_data_from_airports(airports, collect_function):
             retries = 0
             max_retries = 11
             while retries < max_retries:
-                try:
+                try:                    
                     data_df = collect_function(url)
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
@@ -184,10 +184,12 @@ def collect_data_from_airports(airports, collect_function):
                         urllib3.exceptions.MaxRetryError, urllib3.exceptions.NewConnectionError, 
                         urllib3.exceptions.ReadTimeoutError, requests.exceptions.ConnectionError, 
                         requests.exceptions.Timeout, WebDriverException) as e:
-                    retries += 1                    
-                    time.sleep(5)
-                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")                   
-                    driver.refresh()  
+                            
+                            driver.refresh()
+                            retries += 1                           
+                            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
+                            time.sleep(5)
+                              
                     
                         
         
