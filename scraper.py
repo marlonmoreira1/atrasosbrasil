@@ -25,13 +25,13 @@ from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
 options = Options()
-#options.add_argument('--headless')  
+options.add_argument('--headless')  
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.page_load_strategy = "normal"
+options.page_load_strategy = "eager"
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(60)  
+driver.set_page_load_timeout(360)  
 
 def fechar_overlay():
     try:        
@@ -186,14 +186,10 @@ def collect_data_from_airports(airports, collect_function):
                         requests.exceptions.Timeout, WebDriverException) as e:
                     retries += 1                    
                     time.sleep(5)
-                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
-                    
-                    if retries < max_retries:
-                        time.sleep(5)
-                        driver.refresh()  
-                    else:
-                        print(f"Máximo de tentativas atingido para {tipo} no aeroporto {airport}.")
-                        return None
+                    print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")                   
+                    driver.quit()  
+                    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)  
+                    driver.set_page_load_timeout(360
                         
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
