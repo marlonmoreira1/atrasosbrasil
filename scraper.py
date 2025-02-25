@@ -183,12 +183,18 @@ def collect_data_from_airports(airports, collect_function):
                 except (TimeoutException, socket.timeout, 
                         urllib3.exceptions.MaxRetryError, urllib3.exceptions.NewConnectionError, 
                         urllib3.exceptions.ReadTimeoutError, requests.exceptions.ConnectionError, 
-                        requests.exceptions.Timeout, WebDriverException) as e:
+                        requests.exceptions.Timeout, WebDriverException) as e:                            
                             
-                            driver.refresh()
                             retries += 1                           
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
-                            time.sleep(5)
+                            try:                                
+                                driver.quit()
+                            except Exception as quit_error:                                
+                                print(f"Erro ao fechar o driver: {str(quit_error)}")                            
+                            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)                            
+                            time.sleep(5 * retries)
+
+            return pd.DataFrame()
                               
                     
                         
