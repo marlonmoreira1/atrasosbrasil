@@ -31,7 +31,7 @@ options.add_argument('--disable-dev-shm-usage')
 
 
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(600)  
+driver.set_page_load_timeout(60)  
 
 def fechar_overlay():
     try:        
@@ -44,9 +44,9 @@ def fechar_overlay():
         pass  # Ignorando o erro, pois o overlay pode não aparecer sempre
 
 
-def obter_voos(url):
-    import time
-    url = url
+def obter_voos(url):    
+    
+    global driver
     driver.get(url)
 
     fechar_overlay()
@@ -166,6 +166,7 @@ def collect_data_from_airports(airports, collect_function):
     :param delay: Tempo de espera entre as chamadas (em segundos)
     :return: DataFrame combinado com dados de todos os aeroportos
     """
+    global driver
     all_data = []
     
     for airport, nome in airports.items():
@@ -189,10 +190,11 @@ def collect_data_from_airports(airports, collect_function):
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
                             try:                                
                                 driver.quit()
-                            except Exception as quit_error:                                
+                                driver = None
+                            except Exception:                                
                                 print(f"Erro ao fechar o driver: {str(quit_error)}")                            
                             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)                            
-                            time.sleep(5 * retries)
+                            time.sleep(5)
 
             return pd.DataFrame()
                               
