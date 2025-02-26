@@ -85,7 +85,7 @@ def obter_voos(url):
             columns = row.find_all('td')
             if len(columns) > 1:
 
-                time = columns[0].get_text(strip=True)
+                time_flight = columns[0].get_text(strip=True)
                 flight = columns[1].get_text(strip=True)
                 origin = columns[2].get_text(strip=True)
                 airline = columns[3].get_text(strip=True)
@@ -98,7 +98,7 @@ def obter_voos(url):
                 first_date_str = first_date_obj.strftime('%Y-%m-%d')
                 
                 flights.append({
-                    'Time': time,
+                    'Time': time_flight,
                     'Flight': flight,
                     'From': origin,
                     'Airline': airline,
