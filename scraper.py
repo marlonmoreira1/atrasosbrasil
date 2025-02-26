@@ -24,16 +24,18 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
-options = Options()
-options.add_argument('--headless')  
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
+def create_driver():
+    options = Options()
+    options.add_argument('--headless')  
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    
+    
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.set_page_load_timeout(60)
+    return driver
 
-
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-driver.set_page_load_timeout(60)  
-
-def fechar_overlay():
+def fechar_overlay(driver):
     try:        
         overlay = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
@@ -44,11 +46,8 @@ def fechar_overlay():
         pass  # Ignorando o erro, pois o overlay pode não aparecer sempre
 
 
-def obter_voos(url):    
-    
-    global driver
+def obter_voos(driver,url):    
     driver.get(url)
-
     fechar_overlay()
 
     while True:
@@ -57,15 +56,13 @@ def obter_voos(url):
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button.is_displayed():
-                load_more_button.click()                
-                time.sleep(1)  
+                load_more_button.click()                  
             else:
                 print("Botão 'Carregar mais' não está clicável ou não está visível.")
                 break
         except:
-            break
-            
-    time.sleep(1)
+            break            
+    
   
     element = WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
@@ -156,7 +153,7 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }            
 
-def collect_data_from_airports(airports, collect_function):
+def collect_data_from_airports(airports, collect_function, driver):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
@@ -165,8 +162,7 @@ def collect_data_from_airports(airports, collect_function):
     :param collect_function: Função que coleta dados para um aeroporto específico e retorna um DataFrame
     :param delay: Tempo de espera entre as chamadas (em segundos)
     :return: DataFrame combinado com dados de todos os aeroportos
-    """
-    global driver
+    """    
     all_data = []
     
     for airport, nome in airports.items():
@@ -177,7 +173,7 @@ def collect_data_from_airports(airports, collect_function):
             max_retries = 11
             while retries < max_retries:
                 try:                    
-                    data_df = collect_function(url)
+                    data_df = collect_function(driver,url)
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
                     return data_df
@@ -194,7 +190,7 @@ def collect_data_from_airports(airports, collect_function):
             return pd.DataFrame()                       
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
-        time.sleep(5)
+        
         departures_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures", 'Partida')
 
         all_data.append(arrivals_df)
@@ -202,34 +198,43 @@ def collect_data_from_airports(airports, collect_function):
         
         print(f"Dados coletados para o aeroporto: {airport} - {nome}")
         print("---")
-        time.sleep(5)
+        
    
     final_df = pd.concat(all_data, ignore_index=True)
     
     return final_df
 
-df_final = collect_data_from_airports(brazil_airports, obter_voos)
 
-data_hoje = datetime.today()
-data_ontem = data_hoje - timedelta(days=1)
-data_filtro = data_ontem.strftime('%Y-%m-%d')
+driver = create_driver()
 
+try:
+    df_final = collect_data_from_airports(brazil_airports, obter_voos, driver)
 
-voos = df_final[df_final['date_flight']==data_filtro]
-
-connect_str = os.environ['CONNECT_STR']
-container_name = os.environ['CONTAINER_NAME']
-blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-container_client = blob_service_client.get_container_client(container_name)
-
-parquet_buffer = BytesIO()
-voos.to_parquet(parquet_buffer, index=False)
-
-parquet_data = parquet_buffer.getvalue()
-
-blob_name = f"voos_{data_filtro}_bronze.parquet"
-
-blob_client = container_client.get_blob_client(blob_name)
-blob_client.upload_blob(parquet_data, overwrite=True)
-
-driver.quit()
+    if df_final.empty:
+        print("Nenhum dado encontrado! Finalizando o script.")
+        driver.quit() 
+        exit()  
+    else:
+    
+        data_hoje = datetime.today()
+        data_ontem = data_hoje - timedelta(days=1)
+        data_filtro = data_ontem.strftime('%Y-%m-%d')        
+        
+        voos = df_final[df_final['date_flight']==data_filtro]
+        
+        connect_str = os.environ['CONNECT_STR']
+        container_name = os.environ['CONTAINER_NAME']
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_client = blob_service_client.get_container_client(container_name)
+        
+        parquet_buffer = BytesIO()
+        voos.to_parquet(parquet_buffer, index=False)
+        
+        parquet_data = parquet_buffer.getvalue()
+        
+        blob_name = f"voos_{data_filtro}_bronze.parquet"
+        
+        blob_client = container_client.get_blob_client(blob_name)
+        blob_client.upload_blob(parquet_data, overwrite=True)
+finally:
+    driver.quit()
