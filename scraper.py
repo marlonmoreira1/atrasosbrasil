@@ -107,7 +107,7 @@ def obter_voos(url):
                     'Delay_status': status_color,
                     'date_flight': first_date_str
                 })
-    voos = pd.DataFrame(flights)
+    voos = pd.DataFrame(flights)    
 
     return voos
 
@@ -188,18 +188,10 @@ def collect_data_from_airports(airports, collect_function):
                             
                             retries += 1                           
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
-                            try:                                
-                                driver.quit()
-                                driver = None
-                            except Exception:                                
-                                print(f"Erro ao fechar o driver: {str(quit_error)}")                            
-                            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)                            
+                            
                             time.sleep(5)
 
-            return pd.DataFrame()
-                              
-                    
-                        
+            return pd.DataFrame()                       
         
         arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
         time.sleep(5)
@@ -239,3 +231,5 @@ blob_name = f"voos_{data_filtro}_bronze.parquet"
 
 blob_client = container_client.get_blob_client(blob_name)
 blob_client.upload_blob(parquet_data, overwrite=True)
+
+driver.quit()
