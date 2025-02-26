@@ -53,10 +53,10 @@ def obter_voos(url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 10).until(
+            load_more_button = WebDriverWait(driver, 5).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
-            if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
+            if load_more_button.is_displayed():
                 load_more_button.click()                
                 time.sleep(1)  
             else:
