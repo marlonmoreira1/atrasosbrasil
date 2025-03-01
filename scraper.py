@@ -52,7 +52,7 @@ def obter_voos(driver,url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 5).until(
+            load_more_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button.is_displayed():
@@ -64,7 +64,7 @@ def obter_voos(driver,url):
             break            
     
   
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
 
@@ -170,7 +170,7 @@ def collect_data_from_airports(airports, collect_function, driver):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 11
+            max_retries = 15
             while retries < max_retries:
                 try:                    
                     data_df = collect_function(driver,url)
@@ -185,7 +185,7 @@ def collect_data_from_airports(airports, collect_function, driver):
                             retries += 1                           
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
                             
-                            time.sleep(5)
+                            time.sleep(1)
 
             return pd.DataFrame()                       
         
