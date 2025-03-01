@@ -55,15 +55,16 @@ def obter_voos(driver,url):
             load_more_button = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
-            if load_more_button.is_displayed():
-                load_more_button.click()                  
+            if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
+                load_more_button.click()                
+                time.sleep(1)                  
             else:
                 print("Botão 'Carregar mais' não está clicável ou não está visível.")
                 break
         except:
             break            
     
-  
+    time.sleep(1) 
     element = WebDriverWait(driver, 15).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
