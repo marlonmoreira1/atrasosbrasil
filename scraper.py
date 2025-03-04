@@ -171,7 +171,7 @@ def collect_data_from_airports(airports, collect_function, driver):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 10
+            max_retries = 1000
             while retries < max_retries:
                 try:                    
                     data_df = collect_function(driver,url)
@@ -186,7 +186,7 @@ def collect_data_from_airports(airports, collect_function, driver):
                             retries += 1                           
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
                             
-                            time.sleep(1)
+                            time.sleep(7)
 
             return pd.DataFrame()                       
         
