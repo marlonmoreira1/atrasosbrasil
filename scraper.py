@@ -32,7 +32,7 @@ def create_driver():
     
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver.set_page_load_timeout(60)
+    driver.set_page_load_timeout(160)
     return driver
 
 def fechar_overlay(driver):
