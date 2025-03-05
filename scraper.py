@@ -37,7 +37,7 @@ def create_driver():
 
 def fechar_overlay(driver):
     try:        
-        overlay = WebDriverWait(driver, 10).until(
+        overlay = WebDriverWait(driver, 30).until(
             EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
         )
         fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
@@ -52,7 +52,7 @@ def obter_voos(driver,url):
 
     while True:
         try:
-            load_more_button = WebDriverWait(driver, 10).until(
+            load_more_button = WebDriverWait(driver, 30).until(
                     EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
                     
             if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
@@ -65,7 +65,7 @@ def obter_voos(driver,url):
             break            
     
     time.sleep(1) 
-    element = WebDriverWait(driver, 15).until(
+    element = WebDriverWait(driver, 30).until(
         EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
     )      
 
@@ -171,7 +171,7 @@ def collect_data_from_airports(airports, collect_function, driver):
 
         def try_collect(url, tipo):
             retries = 0
-            max_retries = 1000
+            max_retries = 20
             while retries < max_retries:
                 try:                    
                     data_df = collect_function(driver,url)
@@ -186,7 +186,7 @@ def collect_data_from_airports(airports, collect_function, driver):
                             retries += 1                           
                             print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
                             
-                            time.sleep(7)
+                            time.sleep(2)
 
             return pd.DataFrame()                       
         
