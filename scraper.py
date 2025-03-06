@@ -105,12 +105,12 @@ def coletar_voos(iata,tipo):
                     "Delay_status": status_icon,
                     "date_flight": flight_date
                 }
-                registros.append(registro)
-
-        time.sleep(1)
+                registros.append(registro)        
         
         else:
             print(f"Erro na página {page}: {response.status_code}")
+
+        time.sleep(1)
     
     
     df = pd.DataFrame(registros)
