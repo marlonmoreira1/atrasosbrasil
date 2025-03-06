@@ -13,7 +13,7 @@ prata_container = os.environ['CONTAINER_PRATA']
 
 voos = read(connect_str,prata_container,"prata")
 
-voos['Companhia_Aerea'] = voos['Airline'].str.replace(r'\s*\(.*?\)-', '', regex=True)
+voos['Companhia_Aerea'] = voos['Airline'].str.replace(r'\s*\(.*?\)', '', regex=True)
 voos['Companhia_Aerea'] = voos['Companhia_Aerea'].str.replace(r'\-$', '', regex=True)
 
 voos[['Aeronave', 'Modelo_Aeronave']] = voos['Aircraft'].str.extract(r'(.+)\((.+)\)')
