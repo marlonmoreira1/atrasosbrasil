@@ -106,6 +106,8 @@ def coletar_voos(iata,tipo):
                     "date_flight": flight_date
                 }
                 registros.append(registro)
+
+        time.sleep(1)
         
         else:
             print(f"Erro na página {page}: {response.status_code}")
@@ -196,7 +198,7 @@ def collect_data_from_airports(airports, collect_function):
             return pd.DataFrame()                       
         
         arrivals_df = try_collect(airport.lower(), 'arrivals')
-        
+        time.sleep(1)
         departures_df = try_collect(airport.lower(), 'departures')
 
         all_data.append(arrivals_df)
