@@ -242,4 +242,4 @@ try:
         blob_client = container_client.get_blob_client(blob_name)
         blob_client.upload_blob(parquet_data, overwrite=True)
 finally:
-    
+    exit()
