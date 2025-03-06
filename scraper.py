@@ -89,7 +89,7 @@ def coletar_voos(iata,tipo):
                 
                 if real_departure_ts:
                     flight_date = datetime.fromtimestamp(real_departure_ts).strftime("%Y-%m-%d")
-                    departure_time = datetime.fromtimestamp(real_departure_ts).strftime("%I:%M %p")
+                    departure_time = datetime.fromtimestamp(real_departure_ts).strftime("%I:%M")
                 else:
                     flight_date = None
                     departure_time = None
