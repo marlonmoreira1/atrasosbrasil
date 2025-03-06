@@ -24,90 +24,95 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
-def create_driver():
-    options = Options()
-    options.add_argument('--headless')  
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+def coletar_voos(iata,tipo):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+        "Referer": "https://www.flightradar24.com/",
+        "Origin": "https://www.flightradar24.com"
+    }
     
-    
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver.set_page_load_timeout(160)
-    return driver
+    registros = []
 
-def fechar_overlay(driver):
-    try:        
-        overlay = WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "onetrust-pc-dark-filter"))
-        )
-        fechar_botao = driver.find_element(By.ID, "onetrust-accept-btn-handler")
-        fechar_botao.click()
-    except Exception as e:
-        pass  # Ignorando o erro, pois o overlay pode não aparecer sempre
+    now_bahia = datetime.now()
 
+    # Converter para timestamp
+    timestamp = int(now_bahia.timestamp())
 
-def obter_voos(driver,url):    
-    driver.get(url)
-    fechar_overlay(driver)
+    for page in range(1, -11, -1):  
+        url = (f"https://api.flightradar24.com/common/v1/airport.json?"
+               f"code={iata}&plugin[]=&plugin-setting[schedule][mode]={tipo}&"
+               f"plugin-setting[schedule][timestamp]={timestamp}&page={page}&limit=100")
 
-    while True:
-        try:
-            load_more_button = WebDriverWait(driver, 30).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-table-action btn-flights-load']")))
-                    
-            if load_more_button and load_more_button.is_displayed() and load_more_button.is_enabled():
-                load_more_button.click()                
-                time.sleep(1)                  
-            else:
-                print("Botão 'Carregar mais' não está clicável ou não está visível.")
-                break
-        except:
-            break            
-    
-    time.sleep(1) 
-    element = WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.XPATH, "//table[contains(@class, 'table-condensed') and contains(@class, 'table-hover') and contains(@class, 'data-table')]"))
-    )      
+        session = requests.Session()
+        response = session.get(url, headers=headers)
 
-    html_content = element.get_attribute('outerHTML')
-    
-    soup = BeautifulSoup(html_content, 'html.parser')
-    
-    table = soup.find('table', class_='table table-condensed table-hover data-table m-n-t-15')
-    flights = []
-    
-    if table:
-        rows = table.find('tbody').find_all('tr')
-        
-        for row in rows:
-            columns = row.find_all('td')
-            if len(columns) > 1:
+        if response.status_code == 200:
+            data = response.json()
+            flights = data.get("result", {}) \
+                          .get("response", {}) \
+                          .get("airport", {}) \
+                          .get("pluginData", {}) \
+                          .get("schedule", {}) \
+                          .get(tipo, {}) \
+                          .get("data", [])
 
-                time_flight = columns[0].get_text(strip=True)
-                flight = columns[1].get_text(strip=True)
-                origin = columns[2].get_text(strip=True)
-                airline = columns[3].get_text(strip=True)
-                aircraft = columns[4].get_text(strip=True)
-                status = columns[6].get_text(strip=True)
-                status_div = row.find('div', class_='state-block')
-                status_color = status_div.get('class')[1] if status_div else 'unknown'
-                data_date = row.get('data-date')
-                first_date_obj = datetime.strptime(data_date, '%A, %b %d').replace(year=datetime.now().year)
-                first_date_str = first_date_obj.strftime('%Y-%m-%d')
+            for flight_info in flights:
+                flight = flight_info.get("flight", {})
+
+                flight_number = flight.get("identification", {}).get("number", {}).get("default")
+                status_text   = flight.get("status", {}).get("text")
+                status_icon   = flight.get("status", {}).get("icon")
+                aircraft_code = flight.get("aircraft", {}).get("model", {}).get("code")
+                airline_info  = flight.get("airline") or {}
+                airline_name  = airline_info.get("name")
                 
-                flights.append({
-                    'Time': time_flight,
-                    'Flight': flight,
-                    'From': origin,
-                    'Airline': airline,
-                    'Aircraft': aircraft,
-                    'Status': status,
-                    'Delay_status': status_color,
-                    'date_flight': first_date_str
-                })
-    voos = pd.DataFrame(flights)    
+                
+                if tipo == 'arrivals':
+                    destination = flight.get("airport", {}).get("origin", {})
+                    city = destination.get("position", {}).get("region", {}).get("city")
+                    airport_iata = destination.get("code", {}).get("iata")
+                elif tipo == 'departures':
+                    destination = flight.get("airport", {}).get("destination", {})
+                    city = destination.get("position", {}).get("region", {}).get("city")
+                    airport_iata = destination.get("code", {}).get("iata")
+                    
+                
 
-    return voos
+                
+                if city and airport_iata:
+                    from_location = f"{city}({airport_iata})-"
+                else:
+                    from_location = None  
+                
+                
+                real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival")
+                
+                if real_departure_ts:
+                    flight_date = datetime.fromtimestamp(real_departure_ts).strftime("%Y-%m-%d")
+                    departure_time = datetime.fromtimestamp(real_departure_ts).strftime("%I:%M %p")
+                else:
+                    flight_date = None
+                    departure_time = None
+                
+                
+                registro = {
+                    "Time": departure_time,
+                    "Flight": flight_number,
+                    "From": from_location,                    
+                    "Airline": airline_name,
+                    "Aircraft": aircraft_code,
+                    "Status": status_text,
+                    "Delay_status": status_icon,
+                    "date_flight": flight_date
+                }
+                registros.append(registro)
+        
+        else:
+            print(f"Erro na página {page}: {response.status_code}")
+    
+    
+    df = pd.DataFrame(registros)
+    return df
 
 
 brazil_airports = {
@@ -154,7 +159,7 @@ brazil_airports = {
     'MGF': 'Maringá - Aeroporto de Maringá'
 }            
 
-def collect_data_from_airports(airports, collect_function, driver):
+def collect_data_from_airports(airports, collect_function):
     """
     Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
     e retorna um dataframe combinado com todos os dados.
@@ -169,12 +174,12 @@ def collect_data_from_airports(airports, collect_function, driver):
     for airport, nome in airports.items():
         print(f"Coletando dados para o aeroporto: {airport} - {nome}")
 
-        def try_collect(url, tipo):
+        def try_collect(iata,tipo):
             retries = 0
             max_retries = 20
             while retries < max_retries:
                 try:                    
-                    data_df = collect_function(driver,url)
+                    data_df = collect_function(iata,tipo)
                     data_df['Tipo'] = tipo
                     data_df['Aeroporto'] = nome
                     return data_df
@@ -190,9 +195,9 @@ def collect_data_from_airports(airports, collect_function, driver):
 
             return pd.DataFrame()                       
         
-        arrivals_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/arrivals", 'Chegada')
+        arrivals_df = try_collect(airport.lower(), 'arrivals')
         
-        departures_df = try_collect(f"https://www.flightradar24.com/data/airports/{airport.lower()}/departures", 'Partida')
+        departures_df = try_collect(airport.lower(), 'departures')
 
         all_data.append(arrivals_df)
         all_data.append(departures_df)
@@ -206,14 +211,13 @@ def collect_data_from_airports(airports, collect_function, driver):
     return final_df
 
 
-driver = create_driver()
+
 
 try:
-    df_final = collect_data_from_airports(brazil_airports, obter_voos, driver)
+    df_final = collect_data_from_airports(brazil_airports, coletar_voos)
 
     if df_final.empty:
-        print("Nenhum dado encontrado! Finalizando o script.")
-        driver.quit() 
+        print("Nenhum dado encontrado! Finalizando o script.")         
         exit()  
     else:
     
@@ -238,4 +242,4 @@ try:
         blob_client = container_client.get_blob_client(blob_name)
         blob_client.upload_blob(parquet_data, overwrite=True)
 finally:
-    driver.quit()
+    
