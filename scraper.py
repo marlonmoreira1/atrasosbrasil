@@ -33,10 +33,10 @@ def coletar_voos(iata,tipo):
     
     registros = []
 
-    now_bahia = datetime.now()
+    now = datetime.now()
 
     # Converter para timestamp
-    timestamp = int(now_bahia.timestamp())
+    timestamp = int(now.timestamp())
 
     for page in range(1, -11, -1):  
         url = (f"https://api.flightradar24.com/common/v1/airport.json?"
@@ -63,29 +63,32 @@ def coletar_voos(iata,tipo):
                 status_text   = flight.get("status", {}).get("text")
                 status_icon   = flight.get("status", {}).get("icon")
                 aircraft_code = flight.get("aircraft", {}).get("model", {}).get("code")
+                registration  = flight.get("aircraft", {}).get("registration")
                 airline_info  = flight.get("airline") or {}
                 airline_name  = airline_info.get("name")
+                status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text")
+                utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc")
                 
                 
                 if tipo == 'arrivals':
                     destination = flight.get("airport", {}).get("origin", {})
                     city = destination.get("position", {}).get("region", {}).get("city")
                     airport_iata = destination.get("code", {}).get("iata")
+                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival")
+                    
                 elif tipo == 'departures':
                     destination = flight.get("airport", {}).get("destination", {})
                     city = destination.get("position", {}).get("region", {}).get("city")
                     airport_iata = destination.get("code", {}).get("iata")
-                    
+                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("departure")                    
                 
 
                 
                 if city and airport_iata:
                     from_location = f"{city}({airport_iata})-"
                 else:
-                    from_location = None  
+                    from_location = None                  
                 
-                
-                real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival")
                 
                 if real_departure_ts:
                     flight_date = datetime.fromtimestamp(real_departure_ts).strftime("%Y-%m-%d")
@@ -93,6 +96,19 @@ def coletar_voos(iata,tipo):
                 else:
                     flight_date = None
                     departure_time = None
+
+
+                if utc_time:
+                    utc_time_cleaned = datetime.fromtimestamp(utc_time).strftime("%I:%M %p")
+                else:
+                    utc_time_cleaned = None
+                    
+                if status_text and utc_time_cleaned:                    
+                    status_real = f"{status_text}{utc_time_cleaned}"
+                else:
+                    status_real = None
+                    
+                aircraft_total = f"{aircraft_code}({registration})"
                 
                 
                 registro = {
@@ -100,8 +116,8 @@ def coletar_voos(iata,tipo):
                     "Flight": flight_number,
                     "From": from_location,                    
                     "Airline": airline_name,
-                    "Aircraft": aircraft_code,
-                    "Status": status_text,
+                    "Aircraft": aircraft_total,
+                    "Status": status_real,
                     "Delay_status": status_icon,
                     "date_flight": flight_date
                 }
@@ -114,6 +130,7 @@ def coletar_voos(iata,tipo):
     
     
     df = pd.DataFrame(registros)
+    df = df.drop_duplicates()
     return df
 
 
