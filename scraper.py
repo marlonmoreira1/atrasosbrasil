@@ -232,33 +232,32 @@ def collect_data_from_airports(airports, collect_function):
 
 
 
-try:
-    df_final = collect_data_from_airports(brazil_airports, coletar_voos)
 
-    if df_final.empty:
-        print("Nenhum dado encontrado! Finalizando o script.")         
-        exit()  
-    else:
+df_final = collect_data_from_airports(brazil_airports, coletar_voos)
+
+if df_final.empty:
+    print("Nenhum dado encontrado! Finalizando o script.")         
+    exit()  
+else:
+
+    data_hoje = datetime.today()
+    data_ontem = data_hoje - timedelta(days=1)
+    data_filtro = data_ontem.strftime('%Y-%m-%d')        
     
-        data_hoje = datetime.today()
-        data_ontem = data_hoje - timedelta(days=1)
-        data_filtro = data_ontem.strftime('%Y-%m-%d')        
-        
-        voos = df_final[df_final['date_flight']==data_filtro]
-        
-        connect_str = os.environ['CONNECT_STR']
-        container_name = os.environ['CONTAINER_NAME']
-        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-        container_client = blob_service_client.get_container_client(container_name)
-        
-        parquet_buffer = BytesIO()
-        voos.to_parquet(parquet_buffer, index=False)
-        
-        parquet_data = parquet_buffer.getvalue()
-        
-        blob_name = f"voos_{data_filtro}_bronze.parquet"
-        
-        blob_client = container_client.get_blob_client(blob_name)
-        blob_client.upload_blob(parquet_data, overwrite=True)
-finally:
-    exit()
+    voos = df_final[df_final['date_flight']==data_filtro]
+    
+    connect_str = os.environ['CONNECT_STR']
+    container_name = os.environ['CONTAINER_NAME']
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    container_client = blob_service_client.get_container_client(container_name)
+    
+    parquet_buffer = BytesIO()
+    voos.to_parquet(parquet_buffer, index=False)
+    
+    parquet_data = parquet_buffer.getvalue()
+    
+    blob_name = f"voos_{data_filtro}_bronze.parquet"
+    
+    blob_client = container_client.get_blob_client(blob_name)
+    blob_client.upload_blob(parquet_data, overwrite=True)
+
