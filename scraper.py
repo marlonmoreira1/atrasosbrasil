@@ -65,21 +65,21 @@ def coletar_voos(iata,tipo):
                 aircraft_code = flight.get("aircraft", {}).get("model", {}).get("code", None)
                 registration  = flight.get("aircraft", {}).get("registration", None)
                 airline_info  = flight.get("airline") or None
-                airline_name  = airline_info.get("name", None)
+                airline_name  = airline_info.get("name", None) if airline_info else None
                 status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text", None)
                 utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc", None)
                 
                 
                 if tipo == 'arrivals':
                     destination = flight.get("airport", {}).get("origin", None)
-                    city = destination.get("position", {}).get("region", {}).get("city", None)
-                    airport_iata = destination.get("code", {}).get("iata", None)
+                    city = destination.get("position", {}).get("region", {}).get("city", None) if destination else None
+                    airport_iata = destination.get("code", {}).get("iata", None) if destination else None
                     real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival", None)
                     
                 elif tipo == 'departures':
                     destination = flight.get("airport", {}).get("destination", None)
-                    city = destination.get("position", {}).get("region", {}).get("city", None)
-                    airport_iata = destination.get("code", {}).get("iata", None)
+                    city = destination.get("position", {}).get("region", {}).get("city", None) if destination else None
+                    airport_iata = destination.get("code", {}).get("iata", None) if destination else None
                     real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("departure", None)                    
                 
 
