@@ -57,7 +57,7 @@ def coletar_voos(iata,tipo):
                           .get("data", [])
 
             for flight_info in flights:
-                flight = flight_info.get("flight", {})
+                flight = flight_info.get("flight") or {}
 
                 flight_number = flight.get("identification", {}).get("number", {}).get("default") or None
                 status_text   = flight.get("status", {}).get("text") or None
