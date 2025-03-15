@@ -59,28 +59,28 @@ def coletar_voos(iata,tipo):
             for flight_info in flights:
                 flight = flight_info.get("flight", {})
 
-                flight_number = flight.get("identification", {}).get("number", {}).get("default")
-                status_text   = flight.get("status", {}).get("text")
-                status_icon   = flight.get("status", {}).get("icon")
-                aircraft_code = flight.get("aircraft", {}).get("model", {}).get("code")
-                registration  = flight.get("aircraft", {}).get("registration")
+                flight_number = flight.get("identification", {}).get("number", {}).get("default", {})
+                status_text   = flight.get("status", {}).get("text", {})
+                status_icon   = flight.get("status", {}).get("icon", {})
+                aircraft_code = flight.get("aircraft", {}).get("model", {}).get("code", {})
+                registration  = flight.get("aircraft", {}).get("registration", {})
                 airline_info  = flight.get("airline") or {}
-                airline_name  = airline_info.get("name")
-                status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text")
-                utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc")
+                airline_name  = airline_info.get("name", {})
+                status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text", {})
+                utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc", {})
                 
                 
                 if tipo == 'arrivals':
                     destination = flight.get("airport", {}).get("origin", {})
-                    city = destination.get("position", {}).get("region", {}).get("city")
-                    airport_iata = destination.get("code", {}).get("iata")
-                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival")
+                    city = destination.get("position", {}).get("region", {}).get("city", {})
+                    airport_iata = destination.get("code", {}).get("iata", {})
+                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival", {})
                     
                 elif tipo == 'departures':
                     destination = flight.get("airport", {}).get("destination", {})
-                    city = destination.get("position", {}).get("region", {}).get("city")
-                    airport_iata = destination.get("code", {}).get("iata")
-                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("departure")                    
+                    city = destination.get("position", {}).get("region", {}).get("city", {})
+                    airport_iata = destination.get("code", {}).get("iata", {})
+                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("departure", {})                    
                 
 
                 
