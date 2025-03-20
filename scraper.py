@@ -68,7 +68,7 @@ def coletar_voos(iata,tipo):
                 registration  = aircraft.get("registration") or None
                 airline_info  = flight.get("airline") or None
                 airline_name  = airline_info.get("name", None) if airline_info else None
-                #status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text") or None
+                status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text") or None
                 utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc") or None
                 
                 
