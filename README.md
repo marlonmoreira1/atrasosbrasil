@@ -42,7 +42,7 @@ Os dados são coletados do [FlightRadar24](https://www.flightradar24.com), uma p
 A coleta é feita por meio de web scraping, armazenando os dados em formato Parquet no Azure Blob Storage. O processo é automatizado com GitHub Actions para garantir a execução diária da coleta.
 
 ### Armazenamento e Processamento
-Utilizamos uma arquitetura de medallion:
+Utilizo uma arquitetura de medallion:
 - **Camada Bronze**: Dados brutos coletados.
 - **Camada Prata**: Enriquecimento com informações demográficas.
 - **Camada Ouro**: Limpeza e organização dos dados.
