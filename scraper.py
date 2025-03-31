@@ -181,15 +181,7 @@ brazil_airports = {
 }            
 
 def collect_data_from_airports(airports, collect_function):
-    """
-    Itera sobre um dicionário de aeroportos, chama a função de coleta de dados para cada um
-    e retorna um dataframe combinado com todos os dados.
-    
-    :param airports: Dicionário de códigos IATA dos aeroportos e seus nomes
-    :param collect_function: Função que coleta dados para um aeroporto específico e retorna um DataFrame
-    :param delay: Tempo de espera entre as chamadas (em segundos)
-    :return: DataFrame combinado com dados de todos os aeroportos
-    """    
+       
     all_data = []
     
     for airport, nome in airports.items():
