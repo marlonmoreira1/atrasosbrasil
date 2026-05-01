@@ -40,7 +40,7 @@ def coletar_voos(iata,tipo):
 
     for page in range(1, -11, -1):  
         url = (f"https://api.flightradar24.com/common/v1/airport.json?"
-               f"code={iata}")
+               f"code={iata}&plugin-setting[schedule][mode]={tipo}")
 
         session = requests.Session()
         response = session.get(url, headers=headers)
