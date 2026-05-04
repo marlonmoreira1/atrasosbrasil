@@ -24,6 +24,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
+
 def coletar_voos(iata, tipo):
     API_KEY = os.environ.get("AIRLABS_API_KEY")
 
@@ -32,7 +33,7 @@ def coletar_voos(iata, tipo):
     else:
         url = f"https://airlabs.co/api/v9/schedules?dep_iata={iata.upper()}&api_key={API_KEY}"
 
-    response = requests.get(url)
+    response = requests.get(url, timeout=10)
 
     if response.status_code != 200:
         print(f"Erro: {response.status_code}")
@@ -62,7 +63,7 @@ def coletar_voos(iata, tipo):
                 airport_iata = flight.get("arr_iata")
 
             if time_raw:
-                dt = datetime.fromisoformat(time_raw)
+                dt = datetime.fromisoformat(time_raw.replace("Z", "+00:00"))
                 flight_date = dt.strftime("%Y-%m-%d")
                 departure_time_fmt = dt.strftime("%I:%M %p")
             else:
@@ -164,9 +165,9 @@ def collect_data_from_airports(airports, collect_function):
 
             return pd.DataFrame()                       
         
-        arrivals_df = try_collect(airport.lower(), 'arrivals')
+        arrivals_df = try_collect(airport, 'arrivals')
         time.sleep(1)
-        departures_df = try_collect(airport.lower(), 'departures')
+        departures_df = try_collect(airport, 'departures')
 
         all_data.append(arrivals_df)
         all_data.append(departures_df)
@@ -210,4 +211,3 @@ else:
     
     blob_client = container_client.get_blob_client(blob_name)
     blob_client.upload_blob(parquet_data, overwrite=True)
-
