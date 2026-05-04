@@ -33,10 +33,14 @@ def coletar_voos(iata, tipo):
     else:
         url = f"https://airlabs.co/api/v9/schedules?dep_iata={iata.upper()}&api_key={API_KEY}"
 
-    response = requests.get(url, timeout=10)
+    try:
+        response = requests.get(url, timeout=10)
+    except Exception as e:
+        print(f"Erro conexão: {e}")
+        return pd.DataFrame()
 
     if response.status_code != 200:
-        print(f"Erro: {response.status_code}")
+        print(f"Erro HTTP: {response.status_code}")
         return pd.DataFrame()
 
     data = response.json().get("response", [])
@@ -45,35 +49,57 @@ def coletar_voos(iata, tipo):
 
     for flight in data:
         try:
-            flight_number = flight.get("flight_iata")
+            # --- INICIALIZAÇÃO (EVITA ERRO)
+            departure_time_fmt = None
+            flight_date = None
 
-            airline_name = flight.get("airline_name")
+            # --- FLIGHT
+            flight_number = flight.get("flight_iata") or flight.get("flight_icao")
 
+            # --- AIRLINE
+            airline_name = (
+                flight.get("airline_name")
+                or flight.get("airline_iata")
+                or "Unknown"
+            )
+
+            # --- TEMPOS
             departure_time = flight.get("dep_time")
             arrival_time = flight.get("arr_time")
 
-            # Escolhe o horário certo baseado no tipo
             if tipo == "arrivals":
                 time_raw = arrival_time
-                airport_iata = flight.get("dep_iata")  # origem do voo
+                airport_iata = flight.get("dep_iata")  # origem
             else:
                 time_raw = departure_time
-                airport_iata = flight.get("arr_iata")  # destino do voo
-            
-            # pega nome do aeroporto do teu dicionário
+                airport_iata = flight.get("arr_iata")  # destino
+
+            # --- TRATAMENTO DE DATA
+            if time_raw:
+                try:
+                    dt = datetime.fromisoformat(time_raw.replace("Z", "+00:00"))
+                    flight_date = dt.strftime("%Y-%m-%d")
+                    departure_time_fmt = dt.strftime("%I:%M %p")
+                except:
+                    pass
+
+            # --- FROM (COMPATÍVEL COM TEU PIPELINE)
             if airport_iata and airport_iata in brazil_airports:
                 city_name = brazil_airports[airport_iata].split(" - ")[0]
                 from_location = f"{city_name}({airport_iata})-"
             else:
                 from_location = f"Unknown({airport_iata})-" if airport_iata else None
 
-            status_text = flight.get("status")
+            # --- STATUS
+            status_text = flight.get("status") or "Unknown"
             status_real = status_text
 
+            # --- AERONAVE
             aircraft = flight.get("aircraft_icao") or ""
             registration = flight.get("reg_number") or ""
             aircraft_total = f"{aircraft}({registration})"
 
+            # --- REGISTRO FINAL (MESMO FORMATO ANTIGO)
             registro = {
                 "Time": departure_time_fmt,
                 "Flight": flight_number,
@@ -81,7 +107,7 @@ def coletar_voos(iata, tipo):
                 "Airline": airline_name,
                 "Aircraft": aircraft_total,
                 "Status": status_real,
-                "Delay_status": status_text,  # pode melhorar depois
+                "Delay_status": status_text,
                 "date_flight": flight_date
             }
 
@@ -92,6 +118,10 @@ def coletar_voos(iata, tipo):
             continue
 
     df = pd.DataFrame(registros)
+
+    if df.empty:
+        return df
+
     return df.drop_duplicates()
 
 
