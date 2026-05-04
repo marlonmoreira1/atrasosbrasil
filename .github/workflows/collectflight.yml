@@ -26,7 +26,8 @@ jobs:
     - name: Run data collection and loading script
       env:
         CONNECT_STR: ${{ secrets.CONNECT_STR }}
-        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}        
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        AIRLABS_API_KEY: ${{ secrets.AIRLABS_API_KEY }}
       run: |
         python scraper.py
 
