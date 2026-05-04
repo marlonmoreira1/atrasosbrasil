@@ -55,22 +55,17 @@ def coletar_voos(iata, tipo):
             # Escolhe o horário certo baseado no tipo
             if tipo == "arrivals":
                 time_raw = arrival_time
-                city = flight.get("dep_city")
-                airport_iata = flight.get("dep_iata")
+                airport_iata = flight.get("dep_iata")  # origem do voo
             else:
                 time_raw = departure_time
-                city = flight.get("arr_city")
-                airport_iata = flight.get("arr_iata")
-
-            if time_raw:
-                dt = datetime.fromisoformat(time_raw.replace("Z", "+00:00"))
-                flight_date = dt.strftime("%Y-%m-%d")
-                departure_time_fmt = dt.strftime("%I:%M %p")
+                airport_iata = flight.get("arr_iata")  # destino do voo
+            
+            # pega nome do aeroporto do teu dicionário
+            if airport_iata and airport_iata in brazil_airports:
+                city_name = brazil_airports[airport_iata].split(" - ")[0]
+                from_location = f"{city_name}({airport_iata})-"
             else:
-                flight_date = None
-                departure_time_fmt = None
-
-            from_location = f"{city}({airport_iata})-" if city and airport_iata else None
+                from_location = f"Unknown({airport_iata})-" if airport_iata else None
 
             status_text = flight.get("status")
             status_real = status_text
@@ -112,29 +107,13 @@ brazil_airports = {
     'REC': 'Recife - Aeroporto Internacional dos Guararapes',
     'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',    
     'BEL': 'Belém - Aeroporto Internacional de Belém',
-    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',
-    'VIX': 'Vitória - Aeroporto de Vitória',
-    'FLN': 'Florianópolis - Aeroporto Internacional Hercílio Luz',
-    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',
-    'NAT': 'Natal - Aeroporto Internacional Aluízio Alves',
-    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',
-    'CGR': 'Campo Grande - Aeroporto Internacional de Campo Grande',
-    'SLZ': 'São Luís - Aeroporto Internacional de São Luís',
-    'CGB': 'Cuiabá - Aeroporto Internacional Marechal Rondon',
-    'THE': 'Teresina - Aeroporto de Teresina',
-    'AJU': 'Aracaju - Aeroporto de Aracaju',
-    'PVH': 'Porto Velho - Aeroporto Internacional de Porto Velho',    
-    'BVB': 'Boa Vista - Aeroporto Internacional de Boa Vista',
-    'RBR': 'Rio Branco - Aeroporto Internacional de Rio Branco',
-    'PMW': 'Palmas - Aeroporto de Palmas',
-    'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
-    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',
-    'MCP': 'Aeroporto Internacional de Macapá - Alberto Alcolumbre',
+    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',    
+    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',    
+    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',    
+    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',    
     
     # Outros aeroportos relevantes    
-    'VCP': 'Campinas - Aeroporto Internacional de Viracopos',    
-    'UDI': 'Uberlândia - Aeroporto de Uberlândia'   
-    
+    'VCP': 'Campinas - Aeroporto Internacional de Viracopos'    
 }            
 
 def collect_data_from_airports(airports, collect_function):
