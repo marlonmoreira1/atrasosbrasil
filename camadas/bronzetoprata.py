@@ -13,6 +13,7 @@ bronze_container = os.environ['CONTAINER_NAME']
 prata_container = os.environ['CONTAINER_PRATA']
 
 voos = read(connect_str,bronze_container,"bronze")
+print(voos)
 
 voos[['Cidade', 'Aeroporto_iatacode']] = voos['From'].str.extract(r'(.+)\((.+)\)-')
 
