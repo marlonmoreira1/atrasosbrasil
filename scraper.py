@@ -24,115 +24,79 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from io import BytesIO
 
-def coletar_voos(iata,tipo):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-        "Referer": "https://www.flightradar24.com/",
-        "Origin": "https://www.flightradar24.com"
-    }
-    
+def coletar_voos(iata, tipo):
+    API_KEY = os.environ.get("AIRLABS_API_KEY")
+
+    if tipo == "arrivals":
+        url = f"https://airlabs.co/api/v9/schedules?arr_iata={iata.upper()}&api_key={API_KEY}"
+    else:
+        url = f"https://airlabs.co/api/v9/schedules?dep_iata={iata.upper()}&api_key={API_KEY}"
+
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print(f"Erro: {response.status_code}")
+        return pd.DataFrame()
+
+    data = response.json().get("response", [])
+
     registros = []
 
-    now = datetime.now()
+    for flight in data:
+        try:
+            flight_number = flight.get("flight_iata")
 
-    # Converter para timestamp
-    timestamp = int(now.timestamp())
+            airline_name = flight.get("airline_name")
 
-    for page in range(1, -11, -1):  
-        url = (f"https://api.flightradar24.com/common/v1/airport.json?"
-               f"code={iata}&plugin-setting[schedule][mode]={tipo}")
+            departure_time = flight.get("dep_time")
+            arrival_time = flight.get("arr_time")
 
-        session = requests.Session()
-        response = session.get(url, headers=headers)
+            # Escolhe o horário certo baseado no tipo
+            if tipo == "arrivals":
+                time_raw = arrival_time
+                city = flight.get("dep_city")
+                airport_iata = flight.get("dep_iata")
+            else:
+                time_raw = departure_time
+                city = flight.get("arr_city")
+                airport_iata = flight.get("arr_iata")
 
-        if response.status_code == 200:
-            data = response.json()
-            flights = data.get("result", {}) \
-                          .get("response", {}) \
-                          .get("airport", {}) \
-                          .get("pluginData", {}) \
-                          .get("schedule", {}) \
-                          .get(tipo, {}) \
-                          .get("data", [])
+            if time_raw:
+                dt = datetime.fromisoformat(time_raw)
+                flight_date = dt.strftime("%Y-%m-%d")
+                departure_time_fmt = dt.strftime("%I:%M %p")
+            else:
+                flight_date = None
+                departure_time_fmt = None
 
-            for flight_info in flights:
-                flight = flight_info.get("flight") or {}
+            from_location = f"{city}({airport_iata})-" if city and airport_iata else None
 
-                flight_number = flight.get("identification", {}).get("number", {}).get("default") or None
-                status_text   = flight.get("status", {}).get("text") or None
-                status_icon   = flight.get("status", {}).get("icon") or None
-                aircraft = flight.get("aircraft") or {}  
-                model = aircraft.get("model") or {}  
-                aircraft_code = model.get("code") or None
-                registration  = aircraft.get("registration") or None
-                airline_info  = flight.get("airline") or None
-                airline_name  = airline_info.get("name", None) if airline_info else None
-                status_text = flight.get("status", {}).get("generic", {}).get("status", {}).get("text") or None
-                utc_time = flight.get("status", {}).get("generic", {}).get("eventTime", {}).get("utc") or None
-                
-                
-                if tipo == 'arrivals':
-                    destination = flight.get("airport", {}).get("origin") or None
-                    city = destination.get("position", {}).get("region", {}).get("city", None) if destination else None
-                    airport_iata = destination.get("code", {}).get("iata", None) if destination else None
-                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("arrival") or None
-                    
-                elif tipo == 'departures':
-                    destination = flight.get("airport", {}).get("destination") or None
-                    city = destination.get("position", {}).get("region", {}).get("city", None) if destination else None
-                    airport_iata = destination.get("code", {}).get("iata", None) if destination else None
-                    real_departure_ts = flight.get("time", {}).get("scheduled", {}).get("departure") or None                    
-                
+            status_text = flight.get("status")
+            status_real = status_text
 
-                
-                if city and airport_iata:
-                    from_location = f"{city}({airport_iata})-"
-                else:
-                    from_location = None                  
-                
-                
-                if real_departure_ts:
-                    flight_date = datetime.fromtimestamp(real_departure_ts).strftime("%Y-%m-%d")
-                    departure_time = datetime.fromtimestamp(real_departure_ts).strftime("%I:%M %p")
-                else:
-                    flight_date = None
-                    departure_time = None
+            aircraft = flight.get("aircraft_icao") or ""
+            registration = flight.get("reg_number") or ""
+            aircraft_total = f"{aircraft}({registration})"
 
+            registro = {
+                "Time": departure_time_fmt,
+                "Flight": flight_number,
+                "From": from_location,
+                "Airline": airline_name,
+                "Aircraft": aircraft_total,
+                "Status": status_real,
+                "Delay_status": status_text,  # pode melhorar depois
+                "date_flight": flight_date
+            }
 
-                if utc_time:
-                    utc_time_cleaned = datetime.fromtimestamp(utc_time).strftime("%I:%M %p")
-                else:
-                    utc_time_cleaned = None
-                    
-                if status_text and utc_time_cleaned:                    
-                    status_real = f"{status_text}{utc_time_cleaned}"                                   
-                else:
-                    status_real = f"{status_text}"
-                    
-                aircraft_total = f"{aircraft_code}({registration})"
-                
-                
-                registro = {
-                    "Time": departure_time,
-                    "Flight": flight_number,
-                    "From": from_location,                    
-                    "Airline": airline_name,
-                    "Aircraft": aircraft_total,
-                    "Status": status_real,
-                    "Delay_status": status_icon,
-                    "date_flight": flight_date
-                }
-                registros.append(registro)        
-        
-        else:
-            print(f"Erro na página {page}: {response.status_code}")
+            registros.append(registro)
 
-        time.sleep(1)
-    
-    
+        except Exception as e:
+            print(f"Erro parsing: {e}")
+            continue
+
     df = pd.DataFrame(registros)
-    df = df.drop_duplicates()
-    return df
+    return df.drop_duplicates()
 
 
 brazil_airports = {
@@ -167,16 +131,9 @@ brazil_airports = {
     'MCP': 'Aeroporto Internacional de Macapá - Alberto Alcolumbre',
     
     # Outros aeroportos relevantes    
-    'VCP': 'Campinas - Aeroporto Internacional de Viracopos',
-    'BPS': 'Porto Seguro - Aeroporto de Porto Seguro',
-    'NVT': 'Navegantes - Aeroporto Internacional de Navegantes',
-    'IGU': 'Foz do Iguaçu - Aeroporto Internacional de Foz do Iguaçu',
-    'CXJ': 'Caxias do Sul - Aeroporto Regional Hugo Cantergiani',
-    'LDB': 'Londrina - Aeroporto de Londrina',
-    'JOI': 'Joinville - Aeroporto de Joinville',
-    'UDI': 'Uberlândia - Aeroporto de Uberlândia',    
-    'RAO': 'Ribeirão Preto - Aeroporto Leite Lopes',
-    'MGF': 'Maringá - Aeroporto de Maringá'
+    'VCP': 'Campinas - Aeroporto Internacional de Viracopos',    
+    'UDI': 'Uberlândia - Aeroporto de Uberlândia'   
+    
 }            
 
 def collect_data_from_airports(airports, collect_function):
