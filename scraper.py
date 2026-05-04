@@ -201,7 +201,7 @@ if df_final.empty:
 else:
 
     data_hoje = datetime.today()
-    data_ontem = data_hoje - timedelta(days=1)
+    data_ontem = data_hoje
     data_filtro = data_ontem.strftime('%Y-%m-%d')        
     
     voos = df_final[df_final['date_flight']==data_filtro]
