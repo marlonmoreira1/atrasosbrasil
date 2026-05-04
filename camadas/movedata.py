@@ -37,7 +37,7 @@ def save(df,connect_str,container,nome):
     
     data_hoje = datetime.today()
     data_ontem = data_hoje - timedelta(days=1)
-    data_filtro = data_ontem.strftime('%Y-%m-%d')
+    data_filtro = data_hoje.strftime('%Y-%m-%d')
     
 
     blob_name = f"voos_{data_filtro}_{nome}.parquet"
