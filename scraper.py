@@ -1,3 +1,5 @@
+# scraper.py
+
 import os
 import time
 import logging
@@ -5,8 +7,7 @@ import requests
 import pandas as pd
 
 from io import BytesIO
-from datetime import datetime, timezone
-
+from datetime import datetime, timedelta
 from azure.storage.blob import BlobServiceClient
 
 logging.basicConfig(
@@ -19,181 +20,195 @@ API_KEY = os.environ["AIRLABS_API_KEY"]
 CONNECT_STR = os.environ["CONNECT_STR"]
 CONTAINER_NAME = os.environ["CONTAINER_NAME"]
 
-BRAZIL_AIRPORTS = {
-    'SSA': 'Salvador',
-    'GRU': 'Guarulhos',
-    'CGH': 'Congonhas',
-    'BSB': 'Brasília',
-    'SDU': 'Santos Dumont',
-    'GIG': 'Galeão',
-    'CNF': 'Confins',
-    'FOR': 'Fortaleza',
-    'REC': 'Recife',
-    'CWB': 'Curitiba',
-    'BEL': 'Belém',
-    'MAO': 'Manaus',
-    'GYN': 'Goiânia',
-    'MCZ': 'Maceió',
-    'POA': 'Porto Alegre',
-    'VCP': 'Viracopos'
+STATUS_ICON_MAP = {
+    "scheduled": "gray",
+    "active": "blue",
+    "landed": "green",
+    "cancelled": "red",
+    "incident": "red",
+    "diverted": "yellow",
+    "delayed": "yellow",
+    "unknown": "gray"
 }
 
-BASE_URL = "https://airlabs.co/api/v9/schedules"
+brazil_airports = {
+    'SSA': 'Salvador - Aeroporto Internacional de Salvador',
+    'GRU': 'São Paulo - Aeroporto Internacional de Guarulhos',
+    'CGH': 'São Paulo - Aeroporto de Congonhas',
+    'BSB': 'Brasília - Aeroporto Internacional de Brasília',
+    'SDU': 'Rio de Janeiro - Aeroporto Internacional de Santos Dumont',
+    'GIG': 'Rio de Janeiro - Aeroporto Internacional do Galeão',
+    'CNF': 'Belo Horizonte - Aeroporto Internacional de Confins',
+    'FOR': 'Fortaleza - Aeroporto Internacional Pinto Martins',
+    'REC': 'Recife - Aeroporto Internacional dos Guararapes',
+    'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',
+    'BEL': 'Belém - Aeroporto Internacional de Belém',
+    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',
+    'VIX': 'Vitória - Aeroporto de Vitória',
+    'FLN': 'Florianópolis - Aeroporto Internacional Hercílio Luz',
+    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',
+    'NAT': 'Natal - Aeroporto Internacional Aluízio Alves',
+    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',
+    'CGR': 'Campo Grande - Aeroporto Internacional de Campo Grande',
+    'SLZ': 'São Luís - Aeroporto Internacional de São Luís',
+    'CGB': 'Cuiabá - Aeroporto Internacional Marechal Rondon',
+    'THE': 'Teresina - Aeroporto de Teresina',
+    'AJU': 'Aracaju - Aeroporto de Aracaju',
+    'PVH': 'Porto Velho - Aeroporto Internacional de Porto Velho',
+    'BVB': 'Boa Vista - Aeroporto Internacional de Boa Vista',
+    'RBR': 'Rio Branco - Aeroporto Internacional de Rio Branco',
+    'PMW': 'Palmas - Aeroporto de Palmas',
+    'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
+    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',
+    'MCP': 'Aeroporto Internacional de Macapá - Alberto Alcolumbre',
+    'VCP': 'Campinas - Aeroporto Internacional de Viracopos',
+    'BPS': 'Porto Seguro - Aeroporto de Porto Seguro',
+    'NVT': 'Navegantes - Aeroporto Internacional de Navegantes',
+    'IGU': 'Foz do Iguaçu - Aeroporto Internacional de Foz do Iguaçu',
+    'CXJ': 'Caxias do Sul - Aeroporto Regional Hugo Cantergiani',
+    'LDB': 'Londrina - Aeroporto de Londrina',
+    'JOI': 'Joinville - Aeroporto de Joinville',
+    'UDI': 'Uberlândia - Aeroporto de Uberlândia',
+    'RAO': 'Ribeirão Preto - Aeroporto Leite Lopes',
+    'MGF': 'Maringá - Aeroporto de Maringá'
+}
 
 
-def request_with_retry(url, max_retries=5):
+def format_status(status, real_time):
 
-    for attempt in range(max_retries):
+    status = str(status).title()
 
-        try:
+    if real_time:
+        return f"{status} {real_time}"
 
-            response = requests.get(
-                url,
-                timeout=30
-            )
-
-            response.raise_for_status()
-
-            return response.json()
-
-        except Exception as e:
-
-            logging.warning(
-                f"Tentativa {attempt + 1} falhou: {e}"
-            )
-
-            time.sleep(2 * (attempt + 1))
-
-    return None
-
-
-def parse_datetime(dt_str):
-
-    if not dt_str:
-        return None
-
-    try:
-
-        dt = datetime.fromisoformat(
-            dt_str.replace("Z", "+00:00")
-        )
-
-        return dt
-
-    except:
-        return None
+    return status
 
 
 def coletar_voos(iata, tipo):
 
     if tipo == "arrivals":
-
         url = (
-            f"{BASE_URL}"
-            f"?arr_iata={iata}"
-            f"&api_key={API_KEY}"
+            f"https://airlabs.co/api/v9/schedules?"
+            f"arr_iata={iata}&api_key={API_KEY}"
         )
-
     else:
-
         url = (
-            f"{BASE_URL}"
-            f"?dep_iata={iata}"
-            f"&api_key={API_KEY}"
+            f"https://airlabs.co/api/v9/schedules?"
+            f"dep_iata={iata}&api_key={API_KEY}"
         )
 
-    data = request_with_retry(url)
+    response = requests.get(url, timeout=60)
 
-    if not data:
-
+    if response.status_code != 200:
+        logging.warning(f"{iata} erro HTTP {response.status_code}")
         return pd.DataFrame()
 
-    flights = data.get("response", [])
+    data = response.json().get("response", [])
 
     registros = []
 
-    for flight in flights:
+    for flight in data:
 
         try:
 
-            dep_time = parse_datetime(
-                flight.get("dep_time")
+            flight_number = (
+                flight.get("flight_iata")
+                or flight.get("flight_icao")
             )
 
-            arr_time = parse_datetime(
-                flight.get("arr_time")
+            airline_name = (
+                flight.get("airline_name")
+                or "Unknown"
             )
 
-            reference_time = (
-                arr_time
-                if tipo == "arrivals"
-                else dep_time
+            aircraft_code = (
+                flight.get("aircraft_icao")
+                or "Unknown"
             )
 
-            if not reference_time:
-                continue
+            status_raw = (
+                flight.get("status")
+                or "unknown"
+            ).lower()
+
+            delay_status = STATUS_ICON_MAP.get(
+                status_raw,
+                "gray"
+            )
+
+            if tipo == "arrivals":
+
+                airport_iata = flight.get("dep_iata")
+
+                city = (
+                    brazil_airports.get(airport_iata, "")
+                    .split(" - ")[0]
+                )
+
+                scheduled = flight.get("arr_time")
+                real = flight.get("arr_actual")
+
+            else:
+
+                airport_iata = flight.get("arr_iata")
+
+                city = (
+                    brazil_airports.get(airport_iata, "")
+                    .split(" - ")[0]
+                )
+
+                scheduled = flight.get("dep_time")
+                real = flight.get("dep_actual")
+
+            from_location = None
+
+            if city and airport_iata:
+                from_location = f"{city}({airport_iata})-"
+
+            dt_scheduled = None
+            dt_real = None
+
+            if scheduled:
+                dt_scheduled = datetime.fromisoformat(
+                    scheduled.replace("Z", "+00:00")
+                )
+
+            if real:
+                dt_real = datetime.fromisoformat(
+                    real.replace("Z", "+00:00")
+                )
+
+            flight_date = None
+            time_fmt = None
+            real_fmt = None
+
+            if dt_scheduled:
+                flight_date = dt_scheduled.strftime("%Y-%m-%d")
+                time_fmt = dt_scheduled.strftime("%I:%M %p")
+
+            if dt_real:
+                real_fmt = dt_real.strftime("%I:%M %p")
+
+            status_final = format_status(
+                status_raw,
+                real_fmt
+            )
 
             registro = {
-
-                "flight_iata":
-                    flight.get("flight_iata"),
-
-                "flight_icao":
-                    flight.get("flight_icao"),
-
-                "airline_name":
-                    flight.get("airline_name"),
-
-                "status":
-                    flight.get("status"),
-
-                "dep_iata":
-                    flight.get("dep_iata"),
-
-                "arr_iata":
-                    flight.get("arr_iata"),
-
-                "dep_time":
-                    dep_time.strftime("%Y-%m-%d %H:%M:%S")
-                    if dep_time else None,
-
-                "arr_time":
-                    arr_time.strftime("%Y-%m-%d %H:%M:%S")
-                    if arr_time else None,
-
-                "aircraft_icao":
-                    flight.get("aircraft_icao"),
-
-                "reg_number":
-                    flight.get("reg_number"),
-
-                "hex":
-                    flight.get("hex"),
-
-                "tipo":
-                    tipo,
-
-                "airport":
-                    iata,
-
-                "airport_name":
-                    BRAZIL_AIRPORTS.get(iata),
-
-                "date_flight":
-                    reference_time.strftime("%Y-%m-%d"),
-
-                "created_at_utc":
-                    datetime.now(timezone.utc)
-                    .strftime("%Y-%m-%d %H:%M:%S")
+                "Time": time_fmt,
+                "Flight": flight_number,
+                "From": from_location,
+                "Airline": airline_name,
+                "Aircraft": aircraft_code,
+                "Status": status_final,
+                "Delay_status": delay_status,
+                "date_flight": flight_date
             }
 
             registros.append(registro)
 
         except Exception as e:
-
-            logging.warning(
-                f"Erro parsing voo: {e}"
-            )
+            logging.error(f"Erro parsing voo: {e}")
 
     df = pd.DataFrame(registros)
 
@@ -203,53 +218,62 @@ def coletar_voos(iata, tipo):
     return df.drop_duplicates()
 
 
-all_data = []
+def collect_data_from_airports(airports):
 
-for airport in BRAZIL_AIRPORTS.keys():
+    all_data = []
 
-    logging.info(
-        f"Coletando aeroporto {airport}"
+    for airport, nome in airports.items():
+
+        logging.info(f"Coletando {airport}")
+
+        try:
+
+            arrivals_df = coletar_voos(
+                airport,
+                "arrivals"
+            )
+
+            arrivals_df["Tipo"] = "arrivals"
+            arrivals_df["Aeroporto"] = nome
+
+            time.sleep(1)
+
+            departures_df = coletar_voos(
+                airport,
+                "departures"
+            )
+
+            departures_df["Tipo"] = "departures"
+            departures_df["Aeroporto"] = nome
+
+            all_data.append(arrivals_df)
+            all_data.append(departures_df)
+
+        except Exception as e:
+
+            logging.error(f"{airport} erro: {e}")
+
+    return pd.concat(
+        all_data,
+        ignore_index=True
     )
 
-    arrivals = coletar_voos(
-        airport,
-        "arrivals"
-    )
 
-    departures = coletar_voos(
-        airport,
-        "departures"
-    )
-
-    all_data.append(arrivals)
-    all_data.append(departures)
-
-    time.sleep(2)
-
-df_final = pd.concat(
-    all_data,
-    ignore_index=True
+df_final = collect_data_from_airports(
+    brazil_airports
 )
 
 if df_final.empty:
+    raise Exception("Nenhum dado coletado")
 
-    raise Exception(
-        "Nenhum dado retornado"
-    )
+data_hoje = datetime.today()
+data_ontem = data_hoje
 
-today_utc = datetime.now(
-    timezone.utc
-).strftime("%Y-%m-%d")
+data_filtro = data_ontem.strftime("%Y-%m-%d")
 
-df_final = df_final[
-    df_final["date_flight"] == today_utc
+voos = df_final[
+    df_final["date_flight"] == data_filtro
 ]
-
-df_final = df_final.drop_duplicates()
-
-logging.info(
-    f"Total voos: {len(df_final)}"
-)
 
 blob_service_client = (
     BlobServiceClient
@@ -263,17 +287,18 @@ container_client = (
 
 buffer = BytesIO()
 
-df_final.to_parquet(
+voos.to_parquet(
     buffer,
     index=False
 )
 
 blob_name = (
-    f"voos_{today_utc}_bronze.parquet"
+    f"voos_{data_filtro}_bronze.parquet"
 )
 
 blob_client = (
-    container_client.get_blob_client(blob_name)
+    container_client
+    .get_blob_client(blob_name)
 )
 
 blob_client.upload_blob(
@@ -282,5 +307,5 @@ blob_client.upload_blob(
 )
 
 logging.info(
-    f"Upload concluído: {blob_name}"
+    f"Bronze upload concluído: {blob_name}"
 )
