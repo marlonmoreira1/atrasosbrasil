@@ -1,4 +1,3 @@
-```python
 import os
 import logging
 import requests
@@ -259,4 +258,3 @@ blob_client.upload_blob(
 logging.info(
     f"Upload bronze concluído: {blob_name}"
 )
-```
