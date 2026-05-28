@@ -1,222 +1,262 @@
-import azure.functions as func
-import logging
-from azure.storage.blob import BlobServiceClient
-from webdriver_manager.chrome import ChromeDriverManager
-import pandas as pd
-from typing import Dict, Callable
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import requests
-from unidecode import unidecode
-import time
+```python
 import os
-import socket
-import urllib3
-from bs4 import BeautifulSoup
-from selenium.common.exceptions import TimeoutException, WebDriverException
+import logging
+import requests
 import pandas as pd
 from datetime import datetime, timedelta
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from io import BytesIO
+from azure.storage.blob import BlobServiceClient
+import time
 
+logging.basicConfig(level=logging.INFO)
 
-def coletar_voos(iata, tipo):
-    API_KEY = os.environ.get("AIRLABS_API_KEY")
+CLIENT_ID = os.environ["OPENSKY_CLIENT_ID"]
+CLIENT_SECRET = os.environ["OPENSKY_CLIENT_SECRET"]
 
-    if tipo == "arrivals":
-        url = f"https://airlabs.co/api/v9/schedules?arr_iata={iata.upper()}&api_key={API_KEY}"
-    else:
-        url = f"https://airlabs.co/api/v9/schedules?dep_iata={iata.upper()}&api_key={API_KEY}"
+CONNECT_STR = os.environ["CONNECT_STR"]
+CONTAINER_NAME = os.environ["CONTAINER_NAME"]
 
-    try:
-        response = requests.get(url, timeout=10)
-    except Exception as e:
-        print(f"Erro conexão: {e}")
-        return pd.DataFrame()
+TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+
+BRAZIL_AIRPORTS = {
+    "SSA": "Salvador",
+    "GRU": "Guarulhos",
+    "CGH": "Congonhas",
+    "BSB": "Brasília",
+    "SDU": "Santos Dumont",
+    "GIG": "Galeão",
+    "CNF": "Confins",
+    "FOR": "Fortaleza",
+    "REC": "Recife",
+    "CWB": "Curitiba",
+    "BEL": "Belém",
+    "MAO": "Manaus",
+    "VIX": "Vitória",
+    "FLN": "Florianópolis",
+    "GYN": "Goiânia",
+    "NAT": "Natal",
+    "MCZ": "Maceió",
+    "CGR": "Campo Grande",
+    "SLZ": "São Luís",
+    "CGB": "Cuiabá",
+    "THE": "Teresina",
+    "AJU": "Aracaju",
+    "PVH": "Porto Velho",
+    "BVB": "Boa Vista",
+    "RBR": "Rio Branco",
+    "PMW": "Palmas",
+    "JPA": "João Pessoa",
+    "POA": "Porto Alegre",
+    "VCP": "Viracopos",
+    "BPS": "Porto Seguro",
+    "NVT": "Navegantes",
+    "IGU": "Foz do Iguaçu",
+}
+
+def get_access_token():
+
+    payload = {
+        "grant_type": "client_credentials",
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET
+    }
+
+    response = requests.post(
+        TOKEN_URL,
+        data=payload,
+        timeout=60
+    )
+
+    response.raise_for_status()
+
+    token = response.json()["access_token"]
+
+    return token
+
+def unix_timestamp(dt):
+    return int(dt.timestamp())
+
+def get_flights(
+    airport,
+    begin,
+    end,
+    flight_type,
+    token
+):
+
+    url = f"https://opensky-network.org/api/flights/{flight_type}"
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    params = {
+        "airport": airport,
+        "begin": begin,
+        "end": end
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        params=params,
+        timeout=120
+    )
 
     if response.status_code != 200:
-        print(f"Erro HTTP: {response.status_code}")
-        return pd.DataFrame()
 
-    data = response.json().get("response", [])
+        logging.warning(
+            f"{airport} {flight_type} erro {response.status_code}"
+        )
 
-    registros = []
+        return []
 
-    for flight in data:
-        try:
-            # --- INICIALIZAÇÃO (EVITA ERRO)
-            departure_time_fmt = None
-            flight_date = None
+    return response.json()
 
-            # --- FLIGHT
-            flight_number = flight.get("flight_iata") or flight.get("flight_icao")
+def process_flights(
+    flights,
+    airport_name,
+    tipo
+):
 
-            # --- AIRLINE
-            airline_name = (
-                flight.get("airline_name")
-                or flight.get("airline_iata")
-                or "Unknown"
-            )
+    rows = []
 
-            # --- TEMPOS
-            departure_time = flight.get("dep_time")
-            arrival_time = flight.get("arr_time")
+    for f in flights:
 
-            if tipo == "arrivals":
-                time_raw = arrival_time
-                airport_iata = flight.get("dep_iata")  # origem
-            else:
-                time_raw = departure_time
-                airport_iata = flight.get("arr_iata")  # destino
+        callsign = str(
+            f.get("callsign", "")
+        ).strip()
 
-            # --- TRATAMENTO DE DATA
-            if time_raw:
-                try:
-                    dt = datetime.fromisoformat(time_raw.replace("Z", "+00:00"))
-                    flight_date = dt.strftime("%Y-%m-%d")
-                    departure_time_fmt = dt.strftime("%I:%M %p")
-                except:
-                    pass
+        rows.append({
 
-            # --- FROM (COMPATÍVEL COM TEU PIPELINE)
-            if airport_iata and airport_iata in brazil_airports:
-                city_name = brazil_airports[airport_iata].split(" - ")[0]
-                from_location = f"{city_name}({airport_iata})-"
-            else:
-                from_location = f"Unknown({airport_iata})-" if airport_iata else None
+            "icao24": f.get("icao24"),
 
-            # --- STATUS
-            status_text = flight.get("status") or "Unknown"
-            status_real = status_text
+            "Flight": callsign,
 
-            # --- AERONAVE
-            aircraft = flight.get("aircraft_icao") or ""
-            registration = flight.get("reg_number") or ""
-            aircraft_total = f"{aircraft}({registration})"
+            "DepartureAirport":
+                f.get("estDepartureAirport"),
 
-            # --- REGISTRO FINAL (MESMO FORMATO ANTIGO)
-            registro = {
-                "Time": departure_time_fmt,
-                "Flight": flight_number,
-                "From": from_location,
-                "Airline": airline_name,
-                "Aircraft": aircraft_total,
-                "Status": status_real,
-                "Delay_status": status_text,
-                "date_flight": flight_date
-            }
+            "ArrivalAirport":
+                f.get("estArrivalAirport"),
 
-            registros.append(registro)
+            "firstSeen":
+                f.get("firstSeen"),
 
-        except Exception as e:
-            print(f"Erro parsing: {e}")
-            continue
+            "lastSeen":
+                f.get("lastSeen"),
 
-    df = pd.DataFrame(registros)
+            "Tipo":
+                tipo,
 
-    if df.empty:
-        return df
+            "Aeroporto":
+                airport_name,
 
-    return df.drop_duplicates()
+            "date_flight":
+                datetime.utcfromtimestamp(
+                    f.get("lastSeen")
+                ).strftime("%Y-%m-%d")
+                if f.get("lastSeen")
+                else None
+        })
 
+    return rows
 
-brazil_airports = {
-    'SSA': 'Salvador - Aeroporto Internacional de Salvador',
-    'GRU': 'São Paulo - Aeroporto Internacional de Guarulhos',
-    'CGH': 'São Paulo - Aeroporto de Congonhas',
-    'BSB': 'Brasília - Aeroporto Internacional de Brasília',
-    'SDU': 'Rio de Janeiro - Aeroporto Internacional de Santos Dumont',
-    'GIG': 'Rio de Janeiro - Aeroporto Internacional do Galeão',
-    'CNF': 'Belo Horizonte - Aeroporto Internacional de Confins',
-    'FOR': 'Fortaleza - Aeroporto Internacional Pinto Martins',
-    'REC': 'Recife - Aeroporto Internacional dos Guararapes',
-    'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',    
-    'BEL': 'Belém - Aeroporto Internacional de Belém',
-    'MAO': 'Manaus - Aeroporto Internacional Eduardo Gomes',    
-    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',    
-    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',    
-    'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',    
-    
-    # Outros aeroportos relevantes    
-    'VCP': 'Campinas - Aeroporto Internacional de Viracopos'    
-}            
+token = get_access_token()
 
-def collect_data_from_airports(airports, collect_function):
-       
-    all_data = []
-    
-    for airport, nome in airports.items():
-        print(f"Coletando dados para o aeroporto: {airport} - {nome}")
+all_rows = []
 
-        def try_collect(iata,tipo):
-            retries = 0
-            max_retries = 20
-            while retries < max_retries:
-                try:                    
-                    data_df = collect_function(iata,tipo)
-                    data_df['Tipo'] = tipo
-                    data_df['Aeroporto'] = nome
-                    return data_df
-                except (TimeoutException, socket.timeout, 
-                        urllib3.exceptions.MaxRetryError, urllib3.exceptions.NewConnectionError, 
-                        urllib3.exceptions.ReadTimeoutError, requests.exceptions.ConnectionError, 
-                        requests.exceptions.Timeout, WebDriverException) as e:                            
-                            
-                            retries += 1                           
-                            print(f"Falha na coleta para {tipo} no aeroporto {airport} após {retries} tentativas. Erro: {str(e)}")
-                            
-                            time.sleep(2)
+today = datetime.utcnow()
 
-            return pd.DataFrame()                       
-        
-        arrivals_df = try_collect(airport, 'arrivals')
-        time.sleep(1)
-        departures_df = try_collect(airport, 'departures')
+yesterday = today - timedelta(days=1)
 
-        all_data.append(arrivals_df)
-        all_data.append(departures_df)
-        
-        print(f"Dados coletados para o aeroporto: {airport} - {nome}")
-        print("---")
-        
-   
-    final_df = pd.concat(all_data, ignore_index=True)
-    
-    return final_df
+begin = unix_timestamp(
+    datetime(
+        yesterday.year,
+        yesterday.month,
+        yesterday.day,
+        0,
+        0,
+        0
+    )
+)
 
+end = unix_timestamp(
+    datetime(
+        yesterday.year,
+        yesterday.month,
+        yesterday.day,
+        23,
+        59,
+        59
+    )
+)
 
+for airport, name in BRAZIL_AIRPORTS.items():
 
+    logging.info(f"Coletando {airport}")
 
+    arrivals = get_flights(
+        airport,
+        begin,
+        end,
+        "arrival",
+        token
+    )
 
-df_final = collect_data_from_airports(brazil_airports, coletar_voos)
+    departures = get_flights(
+        airport,
+        begin,
+        end,
+        "departure",
+        token
+    )
 
-if df_final.empty:
-    print("Nenhum dado encontrado! Finalizando o script.")         
-    exit()  
-else:
+    all_rows.extend(
+        process_flights(
+            arrivals,
+            name,
+            "Chegada"
+        )
+    )
 
-    data_hoje = datetime.today()
-    data_ontem = data_hoje
-    data_filtro = data_ontem.strftime('%Y-%m-%d')        
-    
-    voos = df_final[df_final['date_flight']==data_filtro]
-    
-    connect_str = os.environ['CONNECT_STR']
-    container_name = os.environ['CONTAINER_NAME']
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    container_client = blob_service_client.get_container_client(container_name)
-    
-    parquet_buffer = BytesIO()
-    voos.to_parquet(parquet_buffer, index=False)
-    
-    parquet_data = parquet_buffer.getvalue()
-    
-    blob_name = f"voos_{data_filtro}_bronze.parquet"
-    
-    blob_client = container_client.get_blob_client(blob_name)
-    blob_client.upload_blob(parquet_data, overwrite=True)
+    all_rows.extend(
+        process_flights(
+            departures,
+            name,
+            "Partida"
+        )
+    )
+
+    time.sleep(3)
+
+df = pd.DataFrame(all_rows)
+
+blob_service_client = BlobServiceClient.from_connection_string(
+    CONNECT_STR
+)
+
+container_client = blob_service_client.get_container_client(
+    CONTAINER_NAME
+)
+
+buffer = BytesIO()
+
+df.to_parquet(buffer, index=False)
+
+blob_name = (
+    f"voos_{yesterday.strftime('%Y-%m-%d')}_bronze.parquet"
+)
+
+blob_client = container_client.get_blob_client(
+    blob_name
+)
+
+blob_client.upload_blob(
+    buffer.getvalue(),
+    overwrite=True
+)
+
+logging.info(
+    f"Upload bronze concluído: {blob_name}"
+)
+```
