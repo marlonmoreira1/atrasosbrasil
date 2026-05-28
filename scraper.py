@@ -1,13 +1,25 @@
 import os
-import logging
-import requests
-import pandas as pd
-from datetime import datetime, timedelta
-from io import BytesIO
-from azure.storage.blob import BlobServiceClient
 import time
+import logging
+from io import BytesIO
+from datetime import datetime, timedelta
 
-logging.basicConfig(level=logging.INFO)
+import pandas as pd
+import requests
+from azure.storage.blob import BlobServiceClient
+
+# =========================================================
+# LOGGING
+# =========================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+# =========================================================
+# ENV VARIABLES
+# =========================================================
 
 CLIENT_ID = os.environ["OPENSKY_CLIENT_ID"]
 CLIENT_SECRET = os.environ["OPENSKY_CLIENT_SECRET"]
@@ -15,49 +27,70 @@ CLIENT_SECRET = os.environ["OPENSKY_CLIENT_SECRET"]
 CONNECT_STR = os.environ["CONNECT_STR"]
 CONTAINER_NAME = os.environ["CONTAINER_NAME"]
 
-TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+# =========================================================
+# TOKEN URL
+# =========================================================
+
+TOKEN_URL = (
+    "https://auth.opensky-network.org/auth/realms/"
+    "opensky-network/protocol/openid-connect/token"
+)
+
+# =========================================================
+# AIRPORTS (ICAO)
+# =========================================================
 
 BRAZIL_AIRPORTS = {
-    "SSA": "Salvador",
-    "GRU": "Guarulhos",
-    "CGH": "Congonhas",
-    "BSB": "Brasília",
-    "SDU": "Santos Dumont",
-    "GIG": "Galeão",
-    "CNF": "Confins",
-    "FOR": "Fortaleza",
-    "REC": "Recife",
-    "CWB": "Curitiba",
-    "BEL": "Belém",
-    "MAO": "Manaus",
-    "VIX": "Vitória",
-    "FLN": "Florianópolis",
-    "GYN": "Goiânia",
-    "NAT": "Natal",
-    "MCZ": "Maceió",
-    "CGR": "Campo Grande",
-    "SLZ": "São Luís",
-    "CGB": "Cuiabá",
-    "THE": "Teresina",
-    "AJU": "Aracaju",
-    "PVH": "Porto Velho",
-    "BVB": "Boa Vista",
-    "RBR": "Rio Branco",
-    "PMW": "Palmas",
-    "JPA": "João Pessoa",
-    "POA": "Porto Alegre",
-    "VCP": "Viracopos",
-    "BPS": "Porto Seguro",
-    "NVT": "Navegantes",
-    "IGU": "Foz do Iguaçu",
+    "SBSV": "Salvador - Aeroporto Internacional de Salvador",
+    "SBGR": "São Paulo - Aeroporto Internacional de Guarulhos",
+    "SBSP": "São Paulo - Aeroporto de Congonhas",
+    "SBBR": "Brasília - Aeroporto Internacional de Brasília",
+    "SBRJ": "Rio de Janeiro - Aeroporto Santos Dumont",
+    "SBGL": "Rio de Janeiro - Aeroporto Internacional do Galeão",
+    "SBCF": "Belo Horizonte - Aeroporto Internacional de Confins",
+    "SBFZ": "Fortaleza - Aeroporto Internacional Pinto Martins",
+    "SBRF": "Recife - Aeroporto Internacional dos Guararapes",
+    "SBCT": "Curitiba - Aeroporto Internacional Afonso Pena",
+    "SBBE": "Belém - Aeroporto Internacional de Belém",
+    "SBEG": "Manaus - Aeroporto Internacional Eduardo Gomes",
+    "SBVT": "Vitória - Aeroporto de Vitória",
+    "SBFL": "Florianópolis - Aeroporto Internacional Hercílio Luz",
+    "SBGO": "Goiânia - Aeroporto Internacional Santa Genoveva",
+    "SBSG": "Natal - Aeroporto Internacional Aluízio Alves",
+    "SBMO": "Maceió - Aeroporto Internacional Zumbi dos Palmares",
+    "SBCG": "Campo Grande - Aeroporto Internacional de Campo Grande",
+    "SBSL": "São Luís - Aeroporto Internacional de São Luís",
+    "SBCY": "Cuiabá - Aeroporto Internacional Marechal Rondon",
+    "SBTE": "Teresina - Aeroporto de Teresina",
+    "SBAR": "Aracaju - Aeroporto de Aracaju",
+    "SBPV": "Porto Velho - Aeroporto Internacional de Porto Velho",
+    "SBBV": "Boa Vista - Aeroporto Internacional de Boa Vista",
+    "SBRB": "Rio Branco - Aeroporto Internacional de Rio Branco",
+    "SBPJ": "Palmas - Aeroporto de Palmas",
+    "SBJP": "João Pessoa - Aeroporto Internacional Presidente Castro Pinto",
+    "SBPA": "Porto Alegre - Aeroporto Internacional Salgado Filho",
+    "SBKP": "Campinas - Aeroporto Internacional de Viracopos",
+    "SBPS": "Porto Seguro - Aeroporto de Porto Seguro",
+    "SBNF": "Navegantes - Aeroporto Internacional de Navegantes",
+    "SBFI": "Foz do Iguaçu - Aeroporto Internacional de Foz do Iguaçu",
+    "SBCX": "Caxias do Sul - Aeroporto Regional Hugo Cantergiani",
+    "SBLO": "Londrina - Aeroporto de Londrina",
+    "SBJV": "Joinville - Aeroporto de Joinville",
+    "SBUL": "Uberlândia - Aeroporto de Uberlândia",
+    "SBRP": "Ribeirão Preto - Aeroporto Leite Lopes",
+    "SBMG": "Maringá - Aeroporto de Maringá",
 }
+
+# =========================================================
+# TOKEN
+# =========================================================
 
 def get_access_token():
 
     payload = {
         "grant_type": "client_credentials",
         "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET
+        "client_secret": CLIENT_SECRET,
     }
 
     response = requests.post(
@@ -72,8 +105,16 @@ def get_access_token():
 
     return token
 
+# =========================================================
+# TIME
+# =========================================================
+
 def unix_timestamp(dt):
     return int(dt.timestamp())
+
+# =========================================================
+# GET FLIGHTS
+# =========================================================
 
 def get_flights(
     airport,
@@ -83,7 +124,10 @@ def get_flights(
     token
 ):
 
-    url = f"https://opensky-network.org/api/flights/{flight_type}"
+    url = (
+        f"https://api.opensky-network.org/"
+        f"api/flights/{flight_type}"
+    )
 
     headers = {
         "Authorization": f"Bearer {token}"
@@ -95,22 +139,46 @@ def get_flights(
         "end": end
     }
 
-    response = requests.get(
-        url,
-        headers=headers,
-        params=params,
-        timeout=120
-    )
+    try:
 
-    if response.status_code != 200:
+        response = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=120
+        )
 
-        logging.warning(
-            f"{airport} {flight_type} erro {response.status_code}"
+        if response.status_code != 200:
+
+            logging.warning(
+                f"{airport} {flight_type} erro "
+                f"{response.status_code}"
+            )
+
+            logging.warning(response.text)
+
+            return []
+
+        data = response.json()
+
+        logging.info(
+            f"{airport} {flight_type}: "
+            f"{len(data)} voos"
+        )
+
+        return data
+
+    except Exception as e:
+
+        logging.error(
+            f"{airport} {flight_type} exception: {e}"
         )
 
         return []
 
-    return response.json()
+# =========================================================
+# PROCESS FLIGHTS
+# =========================================================
 
 def process_flights(
     flights,
@@ -126,135 +194,203 @@ def process_flights(
             f.get("callsign", "")
         ).strip()
 
+        departure_airport = f.get(
+            "estDepartureAirport"
+        )
+
+        arrival_airport = f.get(
+            "estArrivalAirport"
+        )
+
+        first_seen = f.get("firstSeen")
+
+        last_seen = f.get("lastSeen")
+
+        first_seen_dt = (
+            datetime.utcfromtimestamp(first_seen)
+            if first_seen
+            else None
+        )
+
+        last_seen_dt = (
+            datetime.utcfromtimestamp(last_seen)
+            if last_seen
+            else None
+        )
+
+        if tipo == "Chegada":
+
+            from_field = departure_airport
+
+        else:
+
+            from_field = arrival_airport
+
         rows.append({
 
-            "icao24": f.get("icao24"),
+            "Time":
+                first_seen_dt.strftime("%H:%M")
+                if first_seen_dt
+                else None,
 
-            "Flight": callsign,
+            "Flight":
+                callsign,
 
-            "DepartureAirport":
-                f.get("estDepartureAirport"),
+            "From":
+                from_field,
 
-            "ArrivalAirport":
-                f.get("estArrivalAirport"),
+            "Airline":
+                callsign[:3]
+                if callsign
+                else None,
 
-            "firstSeen":
-                f.get("firstSeen"),
+            "Aircraft":
+                f.get("icao24"),
 
-            "lastSeen":
-                f.get("lastSeen"),
+            "Status":
+                "Landed"
+                if tipo == "Chegada"
+                else "Departed",
+
+            "Delay_status":
+                None,
+
+            "date_flight":
+                last_seen_dt.strftime("%Y-%m-%d")
+                if last_seen_dt
+                else None,
 
             "Tipo":
                 tipo,
 
             "Aeroporto":
-                airport_name,
-
-            "date_flight":
-                datetime.utcfromtimestamp(
-                    f.get("lastSeen")
-                ).strftime("%Y-%m-%d")
-                if f.get("lastSeen")
-                else None
+                airport_name
         })
 
     return rows
 
-token = get_access_token()
+# =========================================================
+# MAIN
+# =========================================================
 
-all_rows = []
+if __name__ == "__main__":
 
-today = datetime.utcnow()
+    logging.info("Iniciando pipeline OpenSky")
 
-yesterday = today - timedelta(days=1)
+    token = get_access_token()
 
-begin = unix_timestamp(
-    datetime(
-        yesterday.year,
-        yesterday.month,
-        yesterday.day,
-        0,
-        0,
-        0
-    )
-)
+    all_rows = []
 
-end = unix_timestamp(
-    datetime(
-        yesterday.year,
-        yesterday.month,
-        yesterday.day,
-        23,
-        59,
-        59
-    )
-)
+    today = datetime.utcnow()
 
-for airport, name in BRAZIL_AIRPORTS.items():
+    yesterday = today - timedelta(days=1)
 
-    logging.info(f"Coletando {airport}")
-
-    arrivals = get_flights(
-        airport,
-        begin,
-        end,
-        "arrival",
-        token
+    begin = unix_timestamp(
+        datetime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            0,
+            0,
+            0
+        )
     )
 
-    departures = get_flights(
-        airport,
-        begin,
-        end,
-        "departure",
-        token
+    end = unix_timestamp(
+        datetime(
+            yesterday.year,
+            yesterday.month,
+            yesterday.day,
+            23,
+            59,
+            59
+        )
     )
 
-    all_rows.extend(
-        process_flights(
+    for airport, airport_name in BRAZIL_AIRPORTS.items():
+
+        logging.info(
+            f"Coletando aeroporto {airport}"
+        )
+
+        arrivals = get_flights(
+            airport=airport,
+            begin=begin,
+            end=end,
+            flight_type="arrival",
+            token=token
+        )
+
+        departures = get_flights(
+            airport=airport,
+            begin=begin,
+            end=end,
+            flight_type="departure",
+            token=token
+        )
+
+        arrival_rows = process_flights(
             arrivals,
-            name,
+            airport_name,
             "Chegada"
         )
+
+        departure_rows = process_flights(
+            departures,
+            airport_name,
+            "Partida"
+        )
+
+        all_rows.extend(arrival_rows)
+        all_rows.extend(departure_rows)
+
+        time.sleep(2)
+
+    df = pd.DataFrame(all_rows)
+
+    logging.info(
+        f"Total de voos coletados: {len(df)}"
     )
 
-    all_rows.extend(
-        process_flights(
-            departures,
-            name,
-            "Partida"
+    # =====================================================
+    # UPLOAD AZURE
+    # =====================================================
+
+    blob_service_client = (
+        BlobServiceClient.from_connection_string(
+            CONNECT_STR
         )
     )
 
-    time.sleep(3)
+    container_client = (
+        blob_service_client.get_container_client(
+            CONTAINER_NAME
+        )
+    )
 
-df = pd.DataFrame(all_rows)
+    parquet_buffer = BytesIO()
 
-blob_service_client = BlobServiceClient.from_connection_string(
-    CONNECT_STR
-)
+    df.to_parquet(
+        parquet_buffer,
+        index=False
+    )
 
-container_client = blob_service_client.get_container_client(
-    CONTAINER_NAME
-)
+    blob_name = (
+        f"voos_{yesterday.strftime('%Y-%m-%d')}"
+        f"_bronze.parquet"
+    )
 
-buffer = BytesIO()
+    blob_client = (
+        container_client.get_blob_client(
+            blob_name
+        )
+    )
 
-df.to_parquet(buffer, index=False)
+    blob_client.upload_blob(
+        parquet_buffer.getvalue(),
+        overwrite=True
+    )
 
-blob_name = (
-    f"voos_{yesterday.strftime('%Y-%m-%d')}_bronze.parquet"
-)
-
-blob_client = container_client.get_blob_client(
-    blob_name
-)
-
-blob_client.upload_blob(
-    buffer.getvalue(),
-    overwrite=True
-)
-
-logging.info(
-    f"Upload bronze concluído: {blob_name}"
-)
+    logging.info(
+        f"Upload concluído: {blob_name}"
+    )
