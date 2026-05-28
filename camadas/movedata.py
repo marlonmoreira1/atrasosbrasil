@@ -1,48 +1,74 @@
-import os
+# movedata.py
+
 from azure.storage.blob import BlobServiceClient
+import pandas as pd
+from datetime import datetime
+from io import BytesIO
 
-CONNECT_STR = os.environ["CONNECT_STR"]
 
-SOURCE_CONTAINER = os.environ["SOURCE_CONTAINER"]
+def read(connect_str, container, nome):
 
-DEST_CONTAINER = os.environ["DEST_CONTAINER"]
-
-blob_service_client = (
-    BlobServiceClient
-    .from_connection_string(CONNECT_STR)
-)
-
-source_container = (
-    blob_service_client
-    .get_container_client(SOURCE_CONTAINER)
-)
-
-dest_container = (
-    blob_service_client
-    .get_container_client(DEST_CONTAINER)
-)
-
-blobs = source_container.list_blobs()
-
-for blob in blobs:
-
-    source_blob = (
-        source_container
-        .get_blob_client(blob.name)
+    blob_service_client = (
+        BlobServiceClient
+        .from_connection_string(connect_str)
     )
 
-    data = source_blob.download_blob().readall()
-
-    dest_blob = (
-        dest_container
-        .get_blob_client(blob.name)
+    container_client = (
+        blob_service_client
+        .get_container_client(container)
     )
 
-    dest_blob.upload_blob(
-        data,
+    data_filtro = datetime.today().strftime("%Y-%m-%d")
+
+    blob_name = (
+        f"voos_{data_filtro}_{nome}.parquet"
+    )
+
+    blob_client = (
+        container_client
+        .get_blob_client(blob_name)
+    )
+
+    stream = blob_client.download_blob()
+
+    data = stream.readall()
+
+    buffer = BytesIO(data)
+
+    return pd.read_parquet(buffer)
+
+
+def save(df, connect_str, container, nome):
+
+    blob_service_client = (
+        BlobServiceClient
+        .from_connection_string(connect_str)
+    )
+
+    container_client = (
+        blob_service_client
+        .get_container_client(container)
+    )
+
+    buffer = BytesIO()
+
+    df.to_parquet(
+        buffer,
+        index=False
+    )
+
+    data_filtro = datetime.today().strftime("%Y-%m-%d")
+
+    blob_name = (
+        f"voos_{data_filtro}_{nome}.parquet"
+    )
+
+    blob_client = (
+        container_client
+        .get_blob_client(blob_name)
+    )
+
+    blob_client.upload_blob(
+        buffer.getvalue(),
         overwrite=True
     )
-
-    source_blob.delete_blob()
-
-    print(f"{blob.name} movido")
