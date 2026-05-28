@@ -49,3 +49,11 @@ jobs:
         CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
       run: |
         python camadas/pratatoouro.py
+
+
+    - name: Upload debug screenshots        # <-- adiciona logo depois do passo do scraper
+      if: always()                           # roda mesmo se o passo anterior falhar
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-screenshots
+        path: debug_attempt_*.png
