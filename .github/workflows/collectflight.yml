@@ -1,59 +1,47 @@
-name: Daily Flight Collection
+name: Flight Pipeline
 
 on:
   schedule:
-    - cron: '0 7 * * *' 
-  workflow_dispatch:
+    - cron: "0 7 * * *"
 
 jobs:
-  collect-and-load-data:
-    runs-on: windows-latest
+  pipeline:
+
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install Playwright browsers        
-      run: playwright install chromium --with-deps   
-        
-    - name: Run data collection and loading script
-      env:
-        CONNECT_STR: ${{ secrets.CONNECT_STR }}
-        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
-        AIRLABS_API_KEY: ${{ secrets.AIRLABS_API_KEY }}
-      run: |
-        python scraper.py
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
 
-    - name: Run bronze to silver processing script
-      env:
-        CONNECT_STR: ${{ secrets.CONNECT_STR }}
-        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
-        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
-      run: |
-        python camadas/bronzetoprata.py
+      - name: Collect Bronze
+        run: python collect_opensky.py
+        env:
+          OPENSKY_CLIENT_ID: ${{ secrets.OPENSKY_CLIENT_ID }}
+          OPENSKY_CLIENT_SECRET: ${{ secrets.OPENSKY_CLIENT_SECRET }}
+          CONNECT_STR: ${{ secrets.CONNECT_STR }}
+          CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
 
-    - name: Run silver to gold processing script
-      env:
-        CONNECT_STR: ${{ secrets.CONNECT_STR }}
-        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
-        CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
-      run: |
-        python camadas/pratatoouro.py
+      - name: Bronze to Prata
+        run: python bronzetoprata.py
+        env:
+          CONNECT_STR: ${{ secrets.CONNECT_STR }}
+          CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+          CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
 
+      - name: Prata to Ouro
+        run: python pratatoouro.py
+        env:
+          CONNECT_STR: ${{ secrets.CONNECT_STR }}
+          CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+          CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
 
-    - name: Upload debug screenshots        # <-- adiciona logo depois do passo do scraper
-      if: always()                           # roda mesmo se o passo anterior falhar
-      uses: actions/upload-artifact@v4
-      with:
-        name: debug-screenshots
-        path: debug_attempt_*.png
