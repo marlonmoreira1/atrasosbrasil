@@ -1,128 +1,151 @@
+# bronzetoprata.py
+
 import os
-import logging
 import pandas as pd
+from unidecode import unidecode
+from movedata import save, read
 
-from io import BytesIO
-from datetime import datetime, timezone
+connect_str = os.environ['CONNECT_STR']
 
-from azure.storage.blob import BlobServiceClient
+bronze_container = os.environ['CONTAINER_NAME']
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+prata_container = os.environ['CONTAINER_PRATA']
+
+voos = read(
+    connect_str,
+    bronze_container,
+    "bronze"
 )
 
-CONNECT_STR = os.environ["CONNECT_STR"]
-
-CONTAINER_BRONZE = os.environ["CONTAINER_NAME"]
-
-CONTAINER_PRATA = os.environ["CONTAINER_PRATA"]
-
-blob_service_client = (
-    BlobServiceClient
-    .from_connection_string(CONNECT_STR)
+voos[['Cidade', 'Aeroporto_iatacode']] = (
+    voos['From']
+    .str.extract(r'(.+)\((.+)\)-')
 )
 
-bronze_container = (
-    blob_service_client
-    .get_container_client(CONTAINER_BRONZE)
+def normalize_city_name(city_name):
+
+    city_name = str(city_name).lower()
+    city_name = city_name.strip()
+
+    city_name = ' '.join(
+        word.capitalize()
+        for word in city_name.split()
+    )
+
+    return city_name
+
+
+airports = pd.read_csv(
+    "camadas/data/airports.csv"
 )
 
-silver_container = (
-    blob_service_client
-    .get_container_client(CONTAINER_PRATA)
+countries = pd.read_csv(
+    "camadas/data/countries.csv"
 )
 
-today_utc = datetime.now(
-    timezone.utc
-).strftime("%Y-%m-%d")
-
-blob_name = (
-    f"voos_{today_utc}_bronze.parquet"
+states = pd.read_csv(
+    "camadas/data/regions.csv"
 )
 
-blob_client = bronze_container.get_blob_client(
-    blob_name
+states['region'] = states['name']
+
+countries['country'] = countries['name']
+
+airports = airports.merge(
+    states[['region', 'code']],
+    left_on='iso_region',
+    right_on='code',
+    how='left'
 )
 
-download_stream = blob_client.download_blob()
-
-buffer = BytesIO()
-
-buffer.write(download_stream.readall())
-
-buffer.seek(0)
-
-df = pd.read_parquet(buffer)
-
-logging.info(
-    f"Registros bronze: {len(df)}"
+airports = airports.merge(
+    countries[['country', 'code']],
+    left_on='iso_country',
+    right_on='code',
+    how='left'
 )
 
-df = df.drop_duplicates()
-
-df = df.dropna(
-    subset=[
-        "flight_iata",
-        "date_flight"
-    ]
-)
-
-df["status"] = (
-    df["status"]
-    .fillna("unknown")
-    .str.lower()
-)
-
-delay_keywords = [
-    "delayed",
-    "late"
+just_airports = airports[
+    airports['iata_code'].notna()
 ]
 
-df["is_delayed"] = (
-    df["status"]
-    .str.contains(
-        "|".join(delay_keywords),
-        case=False,
-        na=False
-    )
+just_airports['municipality'] = (
+    just_airports['municipality']
+    .str.replace(r"\(.*\)", "", regex=True)
+    .str.strip()
 )
 
-df["companhia"] = (
-    df["airline_name"]
-    .fillna("Unknown")
+just_airports['municipality'] = (
+    just_airports['municipality']
+    .apply(normalize_city_name)
 )
 
-df["rota"] = (
-    df["dep_iata"]
-    .fillna("UNK")
-    + " -> " +
-    df["arr_iata"]
-    .fillna("UNK")
+just_airports['city_normalized'] = (
+    just_airports['municipality']
+    .apply(lambda x: unidecode(str(x)))
 )
 
-silver_buffer = BytesIO()
 
-df.to_parquet(
-    silver_buffer,
-    index=False
+def obter_informacoes_geograficas(
+    cidade,
+    iata_code
+):
+
+    cidade_str = str(cidade).lower()
+
+    iata_code_str = str(iata_code).lower()
+
+    resultado = just_airports[
+        (
+            just_airports['city_normalized']
+            .str.lower() == cidade_str
+        )
+        &
+        (
+            just_airports['iata_code']
+            .str.lower() == iata_code_str
+        )
+    ][[
+        'city_normalized',
+        'municipality',
+        'region',
+        'country'
+    ]].values
+
+    if len(resultado) > 0:
+
+        cidade_normalizada, cidade, estado, pais = resultado[0]
+
+        return (
+            cidade_normalizada,
+            cidade,
+            estado,
+            pais
+        )
+
+    return None, None, None, None
+
+
+voos[[
+    'city_normalized',
+    'city',
+    'admin_name',
+    'country'
+]] = voos[['Cidade', 'Aeroporto_iatacode']].apply(
+    lambda x: pd.Series(
+        obter_informacoes_geograficas(
+            x['Cidade'],
+            x['Aeroporto_iatacode']
+        )
+    ),
+    axis=1
 )
 
-silver_blob_name = (
-    f"voos_{today_utc}_silver.parquet"
-)
+voos = voos.drop(columns=['From'])
 
-silver_blob_client = (
-    silver_container
-    .get_blob_client(silver_blob_name)
-)
-
-silver_blob_client.upload_blob(
-    silver_buffer.getvalue(),
-    overwrite=True
-)
-
-logging.info(
-    f"Silver upload concluído: "
-    f"{silver_blob_name}"
+save(
+    voos,
+    connect_str,
+    prata_container,
+    "prata"
 )
