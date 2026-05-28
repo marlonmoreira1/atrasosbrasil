@@ -1,4 +1,3 @@
-```python
 import os
 import logging
 import pandas as pd
@@ -127,4 +126,3 @@ logging.info(
     f"Silver upload concluído: "
     f"{silver_blob_name}"
 )
-```
