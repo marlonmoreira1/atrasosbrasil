@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import requests
 from azure.storage.blob import BlobServiceClient
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # =========================================================
 # LOGGING
@@ -145,7 +147,8 @@ def get_flights(
             url,
             headers=headers,
             params=params,
-            timeout=120
+            timeout=120,
+            verify=False
         )
 
         if response.status_code != 200:
