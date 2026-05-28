@@ -9,6 +9,13 @@ from datetime import datetime, timedelta
 
 from azure.storage.blob import BlobServiceClient
 
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# ==========================================================
+# LOGGING
+# ==========================================================
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
@@ -16,11 +23,19 @@ logging.basicConfig(
 
 logging.info("Iniciando pipeline OpenSky")
 
+# ==========================================================
+# ENV
+# ==========================================================
+
 CLIENT_ID = os.environ["OPENSKY_CLIENT_ID"]
 CLIENT_SECRET = os.environ["OPENSKY_CLIENT_SECRET"]
 
 CONNECT_STR = os.environ["CONNECT_STR"]
 CONTAINER_NAME = os.environ["CONTAINER_NAME"]
+
+# ==========================================================
+# URLS
+# ==========================================================
 
 TOKEN_URL = (
     "https://auth.opensky-network.org/auth/realms/"
@@ -28,6 +43,36 @@ TOKEN_URL = (
 )
 
 BASE_URL = "https://opensky-network.org/api"
+
+# ==========================================================
+# SESSION COM RETRY
+# ==========================================================
+
+session = requests.Session()
+
+retry_strategy = Retry(
+    total=5,
+    backoff_factor=2,
+    status_forcelist=[
+        429,
+        500,
+        502,
+        503,
+        504
+    ],
+    allowed_methods=["GET", "POST"]
+)
+
+adapter = HTTPAdapter(
+    max_retries=retry_strategy
+)
+
+session.mount("https://", adapter)
+session.mount("http://", adapter)
+
+# ==========================================================
+# AIRPORTS
+# ==========================================================
 
 BRAZIL_AIRPORTS = {
     "SBSV": "Salvador",
@@ -64,6 +109,9 @@ BRAZIL_AIRPORTS = {
     "SBFI": "Foz do Iguaçu"
 }
 
+# ==========================================================
+# TOKEN MANAGER
+# ==========================================================
 
 class TokenManager:
 
@@ -87,42 +135,81 @@ class TokenManager:
 
     def refresh(self):
 
-        logging.info("Gerando novo token")
+        max_retries = 5
 
-        response = requests.post(
-            TOKEN_URL,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": CLIENT_ID,
-                "client_secret": CLIENT_SECRET
-            },
-            timeout=30
+        for attempt in range(max_retries):
+
+            try:
+
+                logging.info(
+                    f"Gerando token "
+                    f"(tentativa {attempt + 1})"
+                )
+
+                response = session.post(
+                    TOKEN_URL,
+                    data={
+                        "grant_type": "client_credentials",
+                        "client_id": CLIENT_ID,
+                        "client_secret": CLIENT_SECRET
+                    },
+                    timeout=(30, 120)
+                )
+
+                response.raise_for_status()
+
+                data = response.json()
+
+                self.token = data["access_token"]
+
+                expires_in = data.get(
+                    "expires_in",
+                    1800
+                )
+
+                self.expires_at = (
+                    datetime.utcnow()
+                    + timedelta(
+                        seconds=expires_in - 60
+                    )
+                )
+
+                logging.info(
+                    "Token gerado com sucesso"
+                )
+
+                return self.token
+
+            except Exception as e:
+
+                wait_time = 2 ** attempt
+
+                logging.error(
+                    f"Erro token: {e}"
+                )
+
+                logging.info(
+                    f"Retry em {wait_time}s"
+                )
+
+                time.sleep(wait_time)
+
+        raise Exception(
+            "Falha ao autenticar no OpenSky"
         )
-
-        response.raise_for_status()
-
-        data = response.json()
-
-        self.token = data["access_token"]
-
-        expires_in = data.get("expires_in", 1800)
-
-        self.expires_at = (
-            datetime.utcnow()
-            + timedelta(seconds=expires_in - 60)
-        )
-
-        return self.token
 
     def headers(self):
 
         return {
-            "Authorization": f"Bearer {self.get_token()}"
+            "Authorization":
+                f"Bearer {self.get_token()}"
         }
-
 
 tokens = TokenManager()
 
+# ==========================================================
+# API
+# ==========================================================
 
 def get_flights(
     airport,
@@ -139,42 +226,80 @@ def get_flights(
         "end": end
     }
 
-    try:
+    max_retries = 3
 
-        response = requests.get(
-            url,
-            headers=tokens.headers(),
-            params=params,
-            timeout=60
-        )
+    for attempt in range(max_retries):
 
-        if response.status_code == 404:
+        try:
 
-            logging.warning(
-                f"{airport} {flight_type} sem dados"
+            response = session.get(
+                url,
+                headers=tokens.headers(),
+                params=params,
+                timeout=(30, 180)
             )
 
-            return []
+            if response.status_code == 404:
 
-        response.raise_for_status()
+                logging.warning(
+                    f"{airport} "
+                    f"{flight_type} "
+                    f"sem dados"
+                )
 
-        data = response.json()
+                return []
 
-        logging.info(
-            f"{airport} {flight_type}: "
-            f"{len(data)} voos"
-        )
+            if response.status_code == 429:
 
-        return data
+                retry_after = int(
+                    response.headers.get(
+                        "X-Rate-Limit-Retry-After-Seconds",
+                        60
+                    )
+                )
 
-    except Exception as e:
+                logging.warning(
+                    f"429 Rate Limit. "
+                    f"Aguardando {retry_after}s"
+                )
 
-        logging.error(
-            f"{airport} {flight_type} exception: {e}"
-        )
+                time.sleep(retry_after)
 
-        return []
+                continue
 
+            response.raise_for_status()
+
+            data = response.json()
+
+            logging.info(
+                f"{airport} "
+                f"{flight_type}: "
+                f"{len(data)} voos"
+            )
+
+            return data
+
+        except Exception as e:
+
+            wait_time = 2 ** attempt
+
+            logging.error(
+                f"{airport} "
+                f"{flight_type} "
+                f"erro: {e}"
+            )
+
+            logging.info(
+                f"Retry em {wait_time}s"
+            )
+
+            time.sleep(wait_time)
+
+    return []
+
+# ==========================================================
+# PROCESSAMENTO
+# ==========================================================
 
 def process_flights(
     flights,
@@ -192,9 +317,11 @@ def process_flights(
 
         rows.append({
 
-            "icao24": f.get("icao24"),
+            "icao24":
+                f.get("icao24"),
 
-            "Flight": callsign,
+            "Flight":
+                callsign,
 
             "DepartureAirport":
                 f.get("estDepartureAirport"),
@@ -224,9 +351,8 @@ def process_flights(
 
     return rows
 
-
 # ==========================================================
-# PEGA D-5
+# TARGET DAY
 # ==========================================================
 
 target_day = (
@@ -249,9 +375,13 @@ end = int(
 )
 
 logging.info(
-    f"Coletando data UTC: "
+    f"Data UTC coletada: "
     f"{target_day.strftime('%Y-%m-%d')}"
 )
+
+# ==========================================================
+# LOOP
+# ==========================================================
 
 all_rows = []
 
@@ -261,59 +391,77 @@ for airport, airport_name in BRAZIL_AIRPORTS.items():
         f"Coletando aeroporto {airport}"
     )
 
-    arrivals = get_flights(
-        airport,
-        begin,
-        end,
-        "arrival"
-    )
+    try:
 
-    departures = get_flights(
-        airport,
-        begin,
-        end,
-        "departure"
-    )
-
-    all_rows.extend(
-        process_flights(
-            arrivals,
-            airport_name,
-            "Chegada"
+        arrivals = get_flights(
+            airport,
+            begin,
+            end,
+            "arrival"
         )
-    )
 
-    all_rows.extend(
-        process_flights(
-            departures,
-            airport_name,
-            "Partida"
+        departures = get_flights(
+            airport,
+            begin,
+            end,
+            "departure"
         )
-    )
 
-    time.sleep(1)
+        all_rows.extend(
+            process_flights(
+                arrivals,
+                airport_name,
+                "Chegada"
+            )
+        )
+
+        all_rows.extend(
+            process_flights(
+                departures,
+                airport_name,
+                "Partida"
+            )
+        )
+
+        time.sleep(2)
+
+    except Exception as e:
+
+        logging.error(
+            f"Erro aeroporto {airport}: {e}"
+        )
+
+# ==========================================================
+# DATAFRAME
+# ==========================================================
 
 df = pd.DataFrame(all_rows)
 
-df = df.drop_duplicates(
-    subset=[
-        "icao24",
-        "Flight",
-        "firstSeen",
-        "lastSeen",
-        "Tipo"
-    ]
-)
+if not df.empty:
+
+    df = df.drop_duplicates(
+        subset=[
+            "icao24",
+            "Flight",
+            "firstSeen",
+            "lastSeen",
+            "Tipo"
+        ]
+    )
 
 logging.info(
-    f"Total registros coletados: {len(df)}"
+    f"Total registros: {len(df)}"
 )
 
 if df.empty:
 
     raise Exception(
-        "Nenhum voo retornado pelo OpenSky"
+        "Nenhum voo retornado"
     )
+
+# ==========================================================
+# AZURE BLOB
+# ==========================================================
 
 blob_service_client = (
     BlobServiceClient
