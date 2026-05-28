@@ -308,6 +308,16 @@ for airport, airport_name in BRAZIL_AIRPORTS.items():
 
 df = pd.DataFrame(all_rows)
 
+df = df.drop_duplicates(
+    subset=[
+        "icao24",
+        "Flight",
+        "firstSeen",
+        "lastSeen",
+        "Tipo"
+    ]
+)
+
 logging.info(
     f"Total registros coletados: {len(df)}"
 )
