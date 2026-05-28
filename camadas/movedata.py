@@ -1,4 +1,3 @@
-```python
 from azure.storage.blob import BlobServiceClient
 from io import BytesIO
 from datetime import datetime, timedelta
@@ -48,4 +47,3 @@ def save(df, connect_str, container, camada):
         buffer.getvalue(),
         overwrite=True
     )
-```
