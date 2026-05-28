@@ -29,7 +29,6 @@ TOKEN_URL = (
 
 BASE_URL = "https://opensky-network.org/api"
 
-# ICAO AIRPORTS
 BRAZIL_AIRPORTS = {
     "SBSV": "Salvador",
     "SBGR": "Guarulhos",
@@ -125,11 +124,6 @@ class TokenManager:
 tokens = TokenManager()
 
 
-def unix_timestamp(dt):
-
-    return int(dt.timestamp())
-
-
 def get_flights(
     airport,
     begin,
@@ -164,7 +158,14 @@ def get_flights(
 
         response.raise_for_status()
 
-        return response.json()
+        data = response.json()
+
+        logging.info(
+            f"{airport} {flight_type}: "
+            f"{len(data)} voos"
+        )
+
+        return data
 
     except Exception as e:
 
@@ -224,12 +225,32 @@ def process_flights(
     return rows
 
 
-# IMPORTANTE:
-# flights endpoint é histórico
-# então pega D-2 para garantir processamento
+# ==========================================================
+# PEGA D-5
+# ==========================================================
 
 target_day = (
-    datetime.utcnow() - timedelta(days=3)
+    datetime.utcnow() - timedelta(days=5)
+)
+
+target_day = datetime(
+    target_day.year,
+    target_day.month,
+    target_day.day
+)
+
+begin = int(target_day.timestamp())
+
+end = int(
+    (
+        target_day
+        + timedelta(days=1)
+    ).timestamp()
+)
+
+logging.info(
+    f"Coletando data UTC: "
+    f"{target_day.strftime('%Y-%m-%d')}"
 )
 
 all_rows = []
@@ -240,71 +261,37 @@ for airport, airport_name in BRAZIL_AIRPORTS.items():
         f"Coletando aeroporto {airport}"
     )
 
-    current = datetime(
-        target_day.year,
-        target_day.month,
-        target_day.day,
-        0,
-        0,
-        0
+    arrivals = get_flights(
+        airport,
+        begin,
+        end,
+        "arrival"
     )
 
-    day_end = datetime(
-        target_day.year,
-        target_day.month,
-        target_day.day,
-        23,
-        59,
-        59
+    departures = get_flights(
+        airport,
+        begin,
+        end,
+        "departure"
     )
 
-    while current < day_end:
-
-        next_window = current + timedelta(hours=2)
-
-        begin = int(current.timestamp())
-        end = int(next_window.timestamp())
-
-        logging.info(
-            f"{airport} | "
-            f"{current.strftime('%H:%M')} "
-            f"-> "
-            f"{next_window.strftime('%H:%M')}"
+    all_rows.extend(
+        process_flights(
+            arrivals,
+            airport_name,
+            "Chegada"
         )
+    )
 
-        arrivals = get_flights(
-            airport,
-            begin,
-            end,
-            "arrival"
+    all_rows.extend(
+        process_flights(
+            departures,
+            airport_name,
+            "Partida"
         )
+    )
 
-        departures = get_flights(
-            airport,
-            begin,
-            end,
-            "departure"
-        )
-
-        all_rows.extend(
-            process_flights(
-                arrivals,
-                airport_name,
-                "Chegada"
-            )
-        )
-
-        all_rows.extend(
-            process_flights(
-                departures,
-                airport_name,
-                "Partida"
-            )
-        )
-
-        current = next_window
-
-        time.sleep(1)
+    time.sleep(1)
 
 df = pd.DataFrame(all_rows)
 
@@ -321,6 +308,12 @@ df = df.drop_duplicates(
 logging.info(
     f"Total registros coletados: {len(df)}"
 )
+
+if df.empty:
+
+    raise Exception(
+        "Nenhum voo retornado pelo OpenSky"
+    )
 
 blob_service_client = (
     BlobServiceClient
