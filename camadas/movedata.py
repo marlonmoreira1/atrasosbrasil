@@ -1,48 +1,48 @@
+import os
 from azure.storage.blob import BlobServiceClient
-import pandas as pd
-from datetime import datetime, timedelta
-from io import BytesIO
 
-def read(connect_str, container, nome):
+CONNECT_STR = os.environ["CONNECT_STR"]
 
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+SOURCE_CONTAINER = os.environ["SOURCE_CONTAINER"]
 
-    container_client = blob_service_client.get_container_client(container)
+DEST_CONTAINER = os.environ["DEST_CONTAINER"]
 
-    data_ontem = datetime.today() - timedelta(days=1)
+blob_service_client = (
+    BlobServiceClient
+    .from_connection_string(CONNECT_STR)
+)
 
-    data_filtro = data_ontem.strftime('%Y-%m-%d')
+source_container = (
+    blob_service_client
+    .get_container_client(SOURCE_CONTAINER)
+)
 
-    blob_name = f"voos_{data_filtro}_{nome}.parquet"
+dest_container = (
+    blob_service_client
+    .get_container_client(DEST_CONTAINER)
+)
 
-    blob_client = container_client.get_blob_client(blob_name)
+blobs = source_container.list_blobs()
 
-    stream = blob_client.download_blob()
+for blob in blobs:
 
-    data = stream.readall()
+    source_blob = (
+        source_container
+        .get_blob_client(blob.name)
+    )
 
-    parquet_buffer = BytesIO(data)
+    data = source_blob.download_blob().readall()
 
-    return pd.read_parquet(parquet_buffer)
+    dest_blob = (
+        dest_container
+        .get_blob_client(blob.name)
+    )
 
-def save(df, connect_str, container, nome):
+    dest_blob.upload_blob(
+        data,
+        overwrite=True
+    )
 
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    source_blob.delete_blob()
 
-    container_client = blob_service_client.get_container_client(container)
-
-    parquet_buffer = BytesIO()
-
-    df.to_parquet(parquet_buffer, index=False)
-
-    parquet_data = parquet_buffer.getvalue()
-
-    data_ontem = datetime.today() - timedelta(days=1)
-
-    data_filtro = data_ontem.strftime('%Y-%m-%d')
-
-    blob_name = f"voos_{data_filtro}_{nome}.parquet"
-
-    blob_client = container_client.get_blob_client(blob_name)
-
-    blob_client.upload_blob(parquet_data, overwrite=True)
+    print(f"{blob.name} movido")
