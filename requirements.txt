@@ -11,3 +11,4 @@ uuid
 azure-storage-blob
 pyarrow
 fastparquet
+playwright
