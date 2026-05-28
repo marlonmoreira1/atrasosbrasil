@@ -16,7 +16,7 @@ import random
 MAX_RETRIES = 5          # tentativas por chamada
 RETRY_DELAY  = 5         # segundos base entre tentativas
 LOAD_MORE_TIMEOUT = 10   # segundos para o botão "carregar mais"
-TABLE_TIMEOUT    = 20    # segundos para a tabela aparecer
+TABLE_TIMEOUT    = 60    # segundos para a tabela aparecer (ads atrasam o render)
 
 
 # ──────────────────────────────────────────────
@@ -97,28 +97,44 @@ def obter_voos(url: str) -> pd.DataFrame:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             logging.info(f"[{attempt}/{MAX_RETRIES}] Acessando: {url}")
-            page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+
+            # Aguarda networkidle para garantir que os ads e JS assíncronos terminaram
+            page.goto(url, wait_until="networkidle", timeout=60_000)
             time.sleep(_jitter(2))  # pausa inicial "humana"
 
             fechar_overlay(page)
 
-            # ── Clica em "carregar mais" enquanto existir ──
+            # ── Verifica se a aba correta está ativa (arrivals/departures) ──
+            # O FR24 às vezes abre na aba General; forçamos o clique na aba certa
+            if "/arrivals" in url:
+                _garantir_aba(page, "Arrivals", "arrivals")
+            elif "/departures" in url:
+                _garantir_aba(page, "Departures", "departures")
+
+            # ── Clica em "Load earlier flights" enquanto existir ──
             while True:
                 try:
                     btn = page.wait_for_selector(
                         "button.btn.btn-table-action.btn-flights-load",
                         timeout=LOAD_MORE_TIMEOUT * 1_000,
+                        state="visible",
                     )
+                    btn.scroll_into_view_if_needed()
                     btn.click()
                     time.sleep(_jitter(1))
                 except PlaywrightTimeoutError:
                     break  # não há mais botão
 
-            # ── Aguarda a tabela completa ──
-            table_selector = (
-                "table.table.table-condensed.table-hover.data-table"
+            # ── Aguarda a tabela com timeout generoso (ads atrasam render) ──
+            table_selector = "table.table.table-condensed.table-hover.data-table"
+            page.wait_for_selector(
+                table_selector,
+                timeout=TABLE_TIMEOUT * 1_000,
+                state="visible",
             )
-            page.wait_for_selector(table_selector, timeout=TABLE_TIMEOUT * 1_000)
+
+            # Pequena pausa extra para linhas da tabela popularem via JS
+            time.sleep(2)
 
             html_content = page.inner_html(table_selector)
             flights = _parse_table(html_content)
@@ -135,17 +151,36 @@ def obter_voos(url: str) -> pd.DataFrame:
                 wait = _jitter(RETRY_DELAY * attempt)  # back-off exponencial suave
                 logging.info(f"Aguardando {wait:.1f}s antes de tentar novamente…")
                 time.sleep(wait)
-                # Recarrega a página do zero na próxima tentativa
-                try:
-                    page.reload(wait_until="domcontentloaded", timeout=30_000)
-                except Exception:
-                    pass
             else:
                 logging.error(f"Todas as {MAX_RETRIES} tentativas falharam para {url}. Retornando DataFrame vazio.")
                 return pd.DataFrame(columns=[
                     "Time", "Flight", "From", "Airline",
                     "Aircraft", "Status", "Delay_status", "date_flight",
                 ])
+
+
+def _garantir_aba(page, label: str, path_slug: str):
+    """
+    Garante que a aba correta (Arrivals / Departures) está ativa.
+    O FR24 às vezes carrega na aba General mesmo com a URL correta.
+    """
+    try:
+        # Verifica se a tabela já está visível — se sim, aba já está certa
+        page.wait_for_selector(
+            "table.table.table-condensed.table-hover.data-table",
+            timeout=5_000,
+            state="visible",
+        )
+        logging.debug(f"Aba {label} já ativa.")
+    except PlaywrightTimeoutError:
+        # Tabela não apareceu — tenta clicar na aba manualmente
+        logging.info(f"Clicando na aba {label} manualmente…")
+        try:
+            aba = page.locator(f"a[href*='/{path_slug}']").first
+            aba.click()
+            time.sleep(_jitter(2))
+        except Exception as e:
+            logging.warning(f"Não foi possível clicar na aba {label}: {e}")
 
 
 def _parse_table(html_content: str) -> list:
