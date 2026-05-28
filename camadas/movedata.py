@@ -1,49 +1,48 @@
 from azure.storage.blob import BlobServiceClient
-from io import BytesIO
-from datetime import datetime, timedelta
 import pandas as pd
+from datetime import datetime, timedelta
+from io import BytesIO
 
-def read(connect_str, container, camada):
+def read(connect_str, container, nome):
 
-    blob_service_client = BlobServiceClient.from_connection_string(
-        connect_str
-    )
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
 
-    container_client = blob_service_client.get_container_client(
-        container
-    )
+    container_client = blob_service_client.get_container_client(container)
 
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    data_ontem = datetime.today() - timedelta(days=1)
 
-    blob_name = f"voos_{yesterday.strftime('%Y-%m-%d')}_{camada}.parquet"
+    data_filtro = data_ontem.strftime('%Y-%m-%d')
 
-    blob_client = container_client.get_blob_client(blob_name)
-
-    data = blob_client.download_blob().readall()
-
-    return pd.read_parquet(BytesIO(data))
-
-def save(df, connect_str, container, camada):
-
-    blob_service_client = BlobServiceClient.from_connection_string(
-        connect_str
-    )
-
-    container_client = blob_service_client.get_container_client(
-        container
-    )
-
-    yesterday = datetime.utcnow() - timedelta(days=1)
-
-    blob_name = f"voos_{yesterday.strftime('%Y-%m-%d')}_{camada}.parquet"
-
-    buffer = BytesIO()
-
-    df.to_parquet(buffer, index=False)
+    blob_name = f"voos_{data_filtro}_{nome}.parquet"
 
     blob_client = container_client.get_blob_client(blob_name)
 
-    blob_client.upload_blob(
-        buffer.getvalue(),
-        overwrite=True
-    )
+    stream = blob_client.download_blob()
+
+    data = stream.readall()
+
+    parquet_buffer = BytesIO(data)
+
+    return pd.read_parquet(parquet_buffer)
+
+def save(df, connect_str, container, nome):
+
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+
+    container_client = blob_service_client.get_container_client(container)
+
+    parquet_buffer = BytesIO()
+
+    df.to_parquet(parquet_buffer, index=False)
+
+    parquet_data = parquet_buffer.getvalue()
+
+    data_ontem = datetime.today() - timedelta(days=1)
+
+    data_filtro = data_ontem.strftime('%Y-%m-%d')
+
+    blob_name = f"voos_{data_filtro}_{nome}.parquet"
+
+    blob_client = container_client.get_blob_client(blob_name)
+
+    blob_client.upload_blob(parquet_data, overwrite=True)
