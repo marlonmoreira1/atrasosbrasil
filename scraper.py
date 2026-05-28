@@ -141,6 +141,12 @@ def obter_voos(url: str) -> pd.DataFrame:
 
         except (PlaywrightTimeoutError, ValueError, Exception) as exc:
             logging.warning(f"Tentativa {attempt} falhou para {url}: {exc}")
+            # Screenshot de diagnostico para inspecionar o que o bot esta vendo
+            try:
+                page.screenshot(path=f"debug_attempt_{attempt}.png", full_page=True)
+                logging.info(f"Screenshot salvo: debug_attempt_{attempt}.png")
+            except Exception:
+                pass
             if attempt < MAX_RETRIES:
                 wait = _jitter(RETRY_DELAY * attempt)  # back-off exponencial suave
                 logging.info(f"Aguardando {wait:.1f}s antes de tentar novamente…")
