@@ -229,29 +229,7 @@ def process_flights(
 # então pega D-2 para garantir processamento
 
 target_day = (
-    datetime.utcnow() - timedelta(days=2)
-)
-
-begin = unix_timestamp(
-    datetime(
-        target_day.year,
-        target_day.month,
-        target_day.day,
-        0,
-        0,
-        0
-    )
-)
-
-end = unix_timestamp(
-    datetime(
-        target_day.year,
-        target_day.month,
-        target_day.day,
-        23,
-        59,
-        59
-    )
+    datetime.utcnow() - timedelta(days=3)
 )
 
 all_rows = []
@@ -262,37 +240,71 @@ for airport, airport_name in BRAZIL_AIRPORTS.items():
         f"Coletando aeroporto {airport}"
     )
 
-    arrivals = get_flights(
-        airport,
-        begin,
-        end,
-        "arrival"
+    current = datetime(
+        target_day.year,
+        target_day.month,
+        target_day.day,
+        0,
+        0,
+        0
     )
 
-    departures = get_flights(
-        airport,
-        begin,
-        end,
-        "departure"
+    day_end = datetime(
+        target_day.year,
+        target_day.month,
+        target_day.day,
+        23,
+        59,
+        59
     )
 
-    all_rows.extend(
-        process_flights(
-            arrivals,
-            airport_name,
-            "Chegada"
+    while current < day_end:
+
+        next_window = current + timedelta(hours=2)
+
+        begin = int(current.timestamp())
+        end = int(next_window.timestamp())
+
+        logging.info(
+            f"{airport} | "
+            f"{current.strftime('%H:%M')} "
+            f"-> "
+            f"{next_window.strftime('%H:%M')}"
         )
-    )
 
-    all_rows.extend(
-        process_flights(
-            departures,
-            airport_name,
-            "Partida"
+        arrivals = get_flights(
+            airport,
+            begin,
+            end,
+            "arrival"
         )
-    )
 
-    time.sleep(2)
+        departures = get_flights(
+            airport,
+            begin,
+            end,
+            "departure"
+        )
+
+        all_rows.extend(
+            process_flights(
+                arrivals,
+                airport_name,
+                "Chegada"
+            )
+        )
+
+        all_rows.extend(
+            process_flights(
+                departures,
+                airport_name,
+                "Partida"
+            )
+        )
+
+        current = next_window
+
+        time.sleep(1)
 
 df = pd.DataFrame(all_rows)
 
