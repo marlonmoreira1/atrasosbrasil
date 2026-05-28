@@ -1,49 +1,60 @@
-name: Flight Pipeline
+name: Daily Flight Collection
 
 on:
   schedule:
-    - cron: "0 7 * * *"
+    - cron: '0 7 * * *'
 
   workflow_dispatch:
 
 jobs:
-  pipeline:
 
-    runs-on: ubuntu-latest
+  collect-and-process:
+
+    runs-on: windows-latest
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+    - name: Install dependencies
+      run: |
 
-      - name: Collect Bronze
-        run: python scraper.py
-        env:
-          OPENSKY_CLIENT_ID: ${{ secrets.OPENSKY_CLIENT_ID }}
-          OPENSKY_CLIENT_SECRET: ${{ secrets.OPENSKY_CLIENT_SECRET }}
-          CONNECT_STR: ${{ secrets.CONNECT_STR }}
-          CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        python -m pip install --upgrade pip
 
-      - name: Bronze to Prata
-        run: python bronzetoprata.py
-        env:
-          CONNECT_STR: ${{ secrets.CONNECT_STR }}
-          CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
-          CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+        pip install pandas
+        pip install pyarrow
+        pip install requests
+        pip install azure-storage-blob
 
-      - name: Prata to Ouro
-        run: python pratatoouro.py
-        env:
-          CONNECT_STR: ${{ secrets.CONNECT_STR }}
-          CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
-          CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
+    - name: Run scraper
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        AIRLABS_API_KEY: ${{ secrets.AIRLABS_API_KEY }}
 
+      run: |
+        python scraper.py
+
+    - name: Bronze to Silver
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+
+      run: |
+        python camadas/bronzetoprata.py
+
+    - name: Silver to Gold
+      env:
+        CONNECT_STR: ${{ secrets.CONNECT_STR }}
+        CONTAINER_PRATA: ${{ secrets.CONTAINER_PRATA }}
+        CONTAINER_OURO: ${{ secrets.CONTAINER_OURO }}
+
+      run: |
+        python camadas/pratatoouro.py
