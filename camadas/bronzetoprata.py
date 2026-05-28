@@ -1,41 +1,126 @@
 import os
 import pandas as pd
-from movedata import read, save
+from unidecode import unidecode
+from movedata import save, read
+import warnings
 
-CONNECT_STR = os.environ["CONNECT_STR"]
+warnings.simplefilter(action='ignore')
 
-BRONZE = os.environ["CONTAINER_NAME"]
-PRATA = os.environ["CONTAINER_PRATA"]
+connect_str = os.environ['CONNECT_STR']
 
-df = read(CONNECT_STR, BRONZE, "bronze")
+bronze_container = os.environ['CONTAINER_NAME']
 
-airlines = pd.read_csv("data/airlines.csv")
+prata_container = os.environ['CONTAINER_PRATA']
 
-def identify_airline(callsign):
+voos = read(connect_str, bronze_container, "bronze")
 
-    if pd.isna(callsign):
-        return None
+voos[['Cidade', 'Aeroporto_iatacode']] = voos['From'].str.extract(r'(.+)\((.+)\)-')
 
-    prefix = str(callsign)[:3]
+def normalize_city_name(city_name):
 
-    result = airlines[
-        airlines["prefix"] == prefix
-    ]
+    city_name = str(city_name).lower()
 
-    if len(result) == 0:
-        return "Unknown"
+    city_name = city_name.strip()
 
-    return result.iloc[0]["airline"]
+    city_name = ' '.join(word.capitalize() for word in city_name.lower().split())
 
-df["Airline"] = df["Flight"].apply(
-    identify_airline
+    return city_name
+
+airports = pd.read_csv(
+    "camadas/data/airports.csv",
+    delimiter=','
 )
 
-save(
-    df,
-    CONNECT_STR,
-    PRATA,
-    "prata"
+countries = pd.read_csv(
+    "camadas/data/countries.csv",
+    delimiter=','
 )
 
-print(df.head())
+states = pd.read_csv(
+    "camadas/data/regions.csv",
+    delimiter=','
+)
+
+states['region'] = states['name']
+
+countries['country'] = countries['name']
+
+airports = airports.merge(
+    states[['region','code']],
+    left_on=['iso_region'],
+    right_on=['code'],
+    how='left'
+)
+
+airports = airports.merge(
+    countries[['country','code']],
+    left_on=['iso_country'],
+    right_on=['code'],
+    how='left'
+)
+
+just_airports = airports[airports['iata_code'].notna()]
+
+just_airports['municipality'] = (
+    just_airports['municipality']
+    .str.replace(r"\(.*\)", "", regex=True)
+    .str.strip()
+)
+
+just_airports['municipality'] = (
+    just_airports['municipality']
+    .apply(normalize_city_name)
+)
+
+just_airports['city_normalized'] = (
+    just_airports['municipality']
+    .apply(lambda x: unidecode(str(x)))
+)
+
+def obter_informacoes_geograficas(cidade, iata_code):
+
+    cidade_str = str(cidade).lower()
+
+    iata_code_str = str(iata_code).lower()
+
+    resultado = just_airports[
+        (
+            just_airports['city_normalized'].str.lower() == cidade_str
+        )
+        &
+        (
+            just_airports['iata_code'].str.lower() == iata_code_str
+        )
+    ][[
+        'city_normalized',
+        'municipality',
+        'region',
+        'country'
+    ]].values
+
+    if len(resultado) > 0:
+
+        cidade_normalizada, cidade, estado, pais = resultado[0]
+
+        return cidade_normalizada, cidade, estado, pais
+
+    return None, None, None, None
+
+voos[[
+    'city_normalized',
+    'city',
+    'admin_name',
+    'country'
+]] = voos[['Cidade','Aeroporto_iatacode']].apply(
+    lambda x: pd.Series(
+        obter_informacoes_geograficas(
+            x['Cidade'],
+            x['Aeroporto_iatacode']
+        )
+    ),
+    axis=1
+)
+
+voos = voos.drop(columns=['From'])
+
+save(voos, connect_str, prata_container, "prata")
