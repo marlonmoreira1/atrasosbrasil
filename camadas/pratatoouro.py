@@ -1,41 +1,80 @@
 import os
 import pandas as pd
-from movedata import read, save
+from movedata import save, read
 
-CONNECT_STR = os.environ["CONNECT_STR"]
+connect_str = os.environ['CONNECT_STR']
 
-PRATA = os.environ["CONTAINER_PRATA"]
-OURO = os.environ["CONTAINER_OURO"]
+ouro_container = os.environ['CONTAINER_OURO']
 
-df = read(CONNECT_STR, PRATA, "prata")
+prata_container = os.environ['CONTAINER_PRATA']
 
-def calculate_status(row):
+voos = read(connect_str, prata_container, "prata")
 
-    if pd.isna(row["lastSeen"]):
-        return "Unknown"
-
-    return "Completed"
-
-df["Status"] = df.apply(
-    calculate_status,
-    axis=1
+voos['Companhia_Aerea'] = (
+    voos['Airline']
+    .astype(str)
+    .str.replace(r'\s*\(.*?\)', '', regex=True)
 )
 
-df["Duracao_Minutos"] = (
-    (df["lastSeen"] - df["firstSeen"]) / 60
+voos['Companhia_Aerea'] = (
+    voos['Companhia_Aerea']
+    .str.replace(r'\-$', '', regex=True)
 )
 
-df = df.rename(columns={
-    "Flight": "Numero_Voo",
-    "Airline": "Companhia_Aerea",
-    "date_flight": "Data_Voo"
-})
-
-save(
-    df,
-    CONNECT_STR,
-    OURO,
-    "ouro"
+voos[['Aeronave', 'Modelo_Aeronave']] = (
+    voos['Aircraft']
+    .astype(str)
+    .str.extract(r'(.+)\((.+)\)')
 )
 
-print(df.head())
+voos[['Status', 'Hora_Realizada', 'AM-PM_Realizado']] = (
+    voos['Status']
+    .astype(str)
+    .str.extract(r'([a-zA-Z\s\.]+)(\d{1,2}:\d{2})?\s?(AM|PM)?')
+)
+
+voos[['Hora_Prevista', 'AM-PM_Previsto']] = (
+    voos['Time']
+    .astype(str)
+    .str.extract(r'(\d{1,2}:\d{2})\s?(AM|PM)')
+)
+
+def obter_nacionalidade(row):
+
+    if row != 'Brazil':
+        return 'Internacional'
+
+    return 'Nacional'
+
+voos['Tipo_Voo_Nacional'] = (
+    voos['country']
+    .apply(obter_nacionalidade)
+)
+
+voos['Voo_Id'] = (
+    voos['Flight'].astype(str)
+    + voos['date_flight'].astype(str)
+    + voos['Aeroporto'].astype(str)
+    + voos['Aircraft'].astype(str)
+    + voos['city_normalized'].astype(str)
+    + voos['Status'].astype(str)
+)
+
+voos = voos.drop(
+    columns=['Time','Airline','Aircraft']
+)
+
+colunas_para_renomear = {
+    'Flight': 'Numero_Voo',
+    'Status': 'Status_voo',
+    'Delay_status': 'Indicador_Atraso_Cor',
+    'date_flight': 'Data_Voo',
+    'city_normalized': 'Cidade_Normalizada',
+    'city': 'Cidade_ascii',
+    'admin_name': 'Estado',
+    'country': 'Pais'
+}
+
+voos = voos.rename(columns=colunas_para_renomear)
+
+save(voos, connect_str, ouro_container, "ouro")
