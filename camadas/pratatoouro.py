@@ -1,158 +1,95 @@
+# pratatoouro.py
+
 import os
-import logging
 import pandas as pd
+from movedata import save, read
 
-from io import BytesIO
-from datetime import datetime, timezone
+connect_str = os.environ['CONNECT_STR']
 
-from azure.storage.blob import BlobServiceClient
+ouro_container = os.environ['CONTAINER_OURO']
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+prata_container = os.environ['CONTAINER_PRATA']
+
+voos = read(
+    connect_str,
+    prata_container,
+    "prata"
 )
 
-CONNECT_STR = os.environ["CONNECT_STR"]
-
-CONTAINER_PRATA = os.environ["CONTAINER_PRATA"]
-
-CONTAINER_OURO = os.environ["CONTAINER_OURO"]
-
-blob_service_client = (
-    BlobServiceClient
-    .from_connection_string(CONNECT_STR)
+voos['Companhia_Aerea'] = (
+    voos['Airline']
 )
 
-silver_container = (
-    blob_service_client
-    .get_container_client(CONTAINER_PRATA)
+voos['Aeronave'] = (
+    voos['Aircraft']
 )
 
-gold_container = (
-    blob_service_client
-    .get_container_client(CONTAINER_OURO)
+voos['Modelo_Aeronave'] = (
+    voos['Aircraft']
 )
 
-today_utc = datetime.now(
-    timezone.utc
-).strftime("%Y-%m-%d")
-
-blob_name = (
-    f"voos_{today_utc}_silver.parquet"
-)
-
-blob_client = silver_container.get_blob_client(
-    blob_name
-)
-
-download_stream = blob_client.download_blob()
-
-buffer = BytesIO()
-
-buffer.write(download_stream.readall())
-
-buffer.seek(0)
-
-df = pd.read_parquet(buffer)
-
-logging.info(
-    f"Registros silver: {len(df)}"
-)
-
-# ================================
-# KPI POR AEROPORTO
-# ================================
-
-gold_airport = (
-    df.groupby("airport_name")
-    .agg({
-        "flight_iata": "count",
-        "is_delayed": "sum"
-    })
-    .reset_index()
-)
-
-gold_airport.columns = [
-    "airport_name",
-    "total_voos",
-    "voos_atrasados"
-]
-
-gold_airport["pct_atraso"] = (
-    (
-        gold_airport["voos_atrasados"]
-        /
-        gold_airport["total_voos"]
-    ) * 100
-).round(2)
-
-# ================================
-# KPI POR COMPANHIA
-# ================================
-
-gold_airline = (
-    df.groupby("companhia")
-    .agg({
-        "flight_iata": "count",
-        "is_delayed": "sum"
-    })
-    .reset_index()
-)
-
-gold_airline.columns = [
-    "companhia",
-    "total_voos",
-    "voos_atrasados"
-]
-
-gold_airline["pct_atraso"] = (
-    (
-        gold_airline["voos_atrasados"]
-        /
-        gold_airline["total_voos"]
-    ) * 100
-).round(2)
-
-# ================================
-# UPLOAD
-# ================================
-
-gold_buffer_airport = BytesIO()
-
-gold_airport.to_parquet(
-    gold_buffer_airport,
-    index=False
-)
-
-blob_airport = (
-    gold_container.get_blob_client(
-        f"kpi_aeroportos_{today_utc}.parquet"
+voos[['Status', 'Hora_Realizada', 'AM-PM_Realizado']] = (
+    voos['Status']
+    .str.extract(
+        r'([a-zA-Z\s\.]+)(\d{1,2}:\d{2})?\s?(AM|PM)?'
     )
 )
 
-blob_airport.upload_blob(
-    gold_buffer_airport.getvalue(),
-    overwrite=True
-)
-
-gold_buffer_airline = BytesIO()
-
-gold_airline.to_parquet(
-    gold_buffer_airline,
-    index=False
-)
-
-blob_airline = (
-    gold_container.get_blob_client(
-        f"kpi_companhias_{today_utc}.parquet"
+voos[['Hora_Prevista', 'AM-PM_Previsto']] = (
+    voos['Time']
+    .str.extract(
+        r'(\d{1,2}:\d{2})\s?(AM|PM)'
     )
 )
 
-blob_airline.upload_blob(
-    gold_buffer_airline.getvalue(),
-    overwrite=True
+def obter_nacionalidade(row):
+
+    if row != 'Brazil':
+        return 'Internacional'
+
+    return 'Nacional'
+
+
+voos['Tipo_Voo_Nacional'] = (
+    voos['country']
+    .apply(obter_nacionalidade)
 )
 
-logging.info(
-    "Camada ouro concluída"
+voos['Voo_Id'] = (
+    voos['Flight'].astype(str)
+    + voos['date_flight'].astype(str)
+    + voos['Aeroporto'].astype(str)
+    + voos['Aircraft'].astype(str)
+    + voos['city_normalized'].astype(str)
+    + voos['Status'].astype(str)
+)
+
+voos = voos.drop(
+    columns=[
+        'Time',
+        'Airline',
+        'Aircraft'
+    ]
+)
+
+colunas_para_renomear = {
+    'Flight': 'Numero_Voo',
+    'Status': 'Status_voo',
+    'Delay_status': 'Indicador_Atraso_Cor',
+    'date_flight': 'Data_Voo',
+    'city_normalized': 'Cidade_Normalizada',
+    'city': 'Cidade_ascii',
+    'admin_name': 'Estado',
+    'country': 'Pais'
+}
+
+voos = voos.rename(
+    columns=colunas_para_renomear
+)
+
+save(
+    voos,
+    connect_str,
+    ouro_container,
+    "ouro"
 )
