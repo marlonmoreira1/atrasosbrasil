@@ -1,4 +1,3 @@
-```python
 import os
 import time
 import logging
@@ -285,4 +284,3 @@ blob_client.upload_blob(
 logging.info(
     f"Upload concluído: {blob_name}"
 )
-```
