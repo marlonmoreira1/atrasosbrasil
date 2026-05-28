@@ -98,18 +98,10 @@ def obter_voos(url: str) -> pd.DataFrame:
         try:
             logging.info(f"[{attempt}/{MAX_RETRIES}] Acessando: {url}")
 
-            # Aguarda networkidle para garantir que os ads e JS assíncronos terminaram
-            page.goto(url, wait_until="networkidle", timeout=60_000)
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
             time.sleep(_jitter(2))  # pausa inicial "humana"
 
             fechar_overlay(page)
-
-            # ── Verifica se a aba correta está ativa (arrivals/departures) ──
-            # O FR24 às vezes abre na aba General; forçamos o clique na aba certa
-            if "/arrivals" in url:
-                _garantir_aba(page, "Arrivals", "arrivals")
-            elif "/departures" in url:
-                _garantir_aba(page, "Departures", "departures")
 
             # ── Clica em "Load earlier flights" enquanto existir ──
             while True:
@@ -125,15 +117,17 @@ def obter_voos(url: str) -> pd.DataFrame:
                 except PlaywrightTimeoutError:
                     break  # não há mais botão
 
-            # ── Aguarda a tabela com timeout generoso (ads atrasam render) ──
+            # ── Aguarda qualquer <tr> dentro da tabela aparecer ──
+            # Espera pela linha de dados, não pela tabela vazia — mais confiável
             table_selector = "table.table.table-condensed.table-hover.data-table"
+            row_selector   = f"{table_selector} tbody tr"
             page.wait_for_selector(
-                table_selector,
+                row_selector,
                 timeout=TABLE_TIMEOUT * 1_000,
-                state="visible",
+                state="attached",   # attached = no DOM, não precisa estar visível
             )
 
-            # Pequena pausa extra para linhas da tabela popularem via JS
+            # Pequena pausa extra para demais linhas popularem
             time.sleep(2)
 
             html_content = page.inner_html(table_selector)
