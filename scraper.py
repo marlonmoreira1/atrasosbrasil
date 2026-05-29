@@ -248,13 +248,16 @@ if df_final.empty:
     raise Exception("Nenhum dado coletado")
 
 data_hoje = datetime.today()
-data_ontem = data_hoje
+data_ontem = data_hoje - timedelta(days=1)
 
 data_filtro = data_ontem.strftime("%Y-%m-%d")
 
 voos = df_final[
     df_final["date_flight"] == data_filtro
 ]
+
+logging.info(f"Total voos: {len(voos)}")
+logging.info(f"Colunas: {list(voos.columns)}")
 
 blob_service_client = (
     BlobServiceClient
