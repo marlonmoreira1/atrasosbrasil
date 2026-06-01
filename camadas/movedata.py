@@ -18,7 +18,9 @@ def read(connect_str, container, nome):
         .get_container_client(container)
     )
 
-    data_filtro = datetime.today().strftime("%Y-%m-%d")
+    data_filtro = (
+    datetime.today() - timedelta(days=1)
+).strftime("%Y-%m-%d")
 
     blob_name = (
         f"voos_{data_filtro}_{nome}.parquet"
@@ -57,7 +59,9 @@ def save(df, connect_str, container, nome):
         index=False
     )
 
-    data_filtro = datetime.today().strftime("%Y-%m-%d")
+    data_filtro = (
+    datetime.today() - timedelta(days=1)
+).strftime("%Y-%m-%d")
 
     blob_name = (
         f"voos_{data_filtro}_{nome}.parquet"
