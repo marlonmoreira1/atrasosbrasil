@@ -43,13 +43,7 @@ brazil_airports = {
     'REC': 'Recife - Aeroporto Internacional dos Guararapes',
     'CWB': 'Curitiba - Aeroporto Internacional Afonso Pena',    
     'FLN': 'Florianópolis - Aeroporto Internacional Hercílio Luz',
-    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',
-    'NAT': 'Natal - Aeroporto Internacional Aluízio Alves',
-    'MCZ': 'Maceió - Aeroporto Internacional Zumbi dos Palmares',
-    'CGR': 'Campo Grande - Aeroporto Internacional de Campo Grande',
-    'SLZ': 'São Luís - Aeroporto Internacional de São Luís',
-    'CGB': 'Cuiabá - Aeroporto Internacional Marechal Rondon',    
-    'JPA': 'João Pessoa - Aeroporto Internacional Presidente Castro Pinto',
+    'GYN': 'Goiânia - Aeroporto Internacional Santa Genoveva',       
     'POA': 'Porto Alegre - Aeroporto Internacional Salgado Filho',    
     'VCP': 'Campinas - Aeroporto Internacional de Viracopos'    
 }
