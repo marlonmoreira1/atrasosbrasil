@@ -80,9 +80,26 @@ def coletar_voos(iata, tipo):
 
     response = requests.get(url, timeout=60)
 
-    if response.status_code != 200:
-        logging.warning(f"{iata} erro HTTP {response.status_code}")
-        return pd.DataFrame()
+    logging.info(
+    f"{iata} {tipo} | Status HTTP: {response.status_code}"
+)
+
+    try:
+        json_response = response.json()
+    
+        logging.info(
+            f"{iata} {tipo} | Chaves retorno: {list(json_response.keys())}"
+        )
+    
+        logging.info(
+            f"{iata} {tipo} | Retorno: {str(json_response)[:500]}"
+        )
+    
+    except Exception as e:
+    
+        logging.error(
+            f"{iata} {tipo} erro lendo JSON: {e}"
+        )
 
     data = response.json().get("response", [])
 
